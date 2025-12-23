@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
-import { BACKEND_URL } from "./config";
+import { BACKEND_URL } from "../../admin/src/config";
 
 import Announcements from "./widgets/Announcements";
 import Drives from "./widgets/Drives";

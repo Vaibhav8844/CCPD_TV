@@ -1,6 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
-import { BACKEND_URL } from "./config";
+import { BACKEND_URL } from "../../config";
 
 export default function Announcements() {
   const [text, setText] = useState("");

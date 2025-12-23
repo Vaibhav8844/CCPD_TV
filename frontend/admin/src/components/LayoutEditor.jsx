@@ -1,7 +1,7 @@
 import { useState } from "react";
 import GridLayout from "react-grid-layout";
 import axios from "axios";
-import { BACKEND_URL } from "./config";
+import { BACKEND_URL } from "../config";
 
 import Announcements from "./widgets/Announcements";
 import Drives from "./widgets/Drives";

@@ -7,15 +7,17 @@ const PORT = process.env.PORT || 5000;
 
 const app = express();
 // app.use(cors({ origin: "*" }));
-app.use(cors({
+const corsOptions = {
   origin: [
     "http://localhost:5173",
     "http://localhost:5174",
     "https://vaibhav8844.github.io"
   ],
-  methods: ["GET", "POST"],
-  credentials: true
-}));
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type"]
+};
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 
 const server = http.createServer(app);

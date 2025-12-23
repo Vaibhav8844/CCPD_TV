@@ -6,11 +6,30 @@ const dashboardState = require("./dashboardState");
 const PORT = process.env.PORT || 5000;
 
 const app = express();
-app.use(cors({ origin: "*" }));
+// app.use(cors({ origin: "*" }));
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://vaibhav8844.github.io"
+  ],
+  methods: ["GET", "POST"],
+  credentials: true
+}));
 app.use(express.json());
 
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+// const io = new Server(server, { cors: { origin: "*" } });
+const io = new Server(server, {
+  cors: {
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://vaibhav8844.github.io"
+    ],
+    methods: ["GET", "POST"]
+  }
+});
 
 io.on("connection", (socket) => {
   console.log("TV connected");

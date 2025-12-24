@@ -1,22 +1,35 @@
-import pdf from "pdf-poppler";
+import { fromPath } from "pdf2pic";
 import fs from "fs-extra";
 import path from "path";
 
 export async function pdfToImages(pdfPath, outDir) {
   await fs.ensureDir(outDir);
 
-  const opts = {
+  const options = {
+    density: 150,
+    saveFilename: "page",
+    savePath: outDir,
     format: "png",
-    out_dir: outDir,
-    out_prefix: "page",
-    page: null
+    width: 1654,
+    height: 2339
   };
 
-  await pdf.convert(pdfPath, opts);
+  const converter = fromPath(pdfPath, options);
 
-  const files = await fs.readdir(outDir);
-  return files
-    .filter(f => f.endsWith(".png"))
-    .sort()
-    .map(f => path.join(outDir, f));
+  const results = await converter.bulk(-1); // all pages
+
+  const files = results
+    .map(r => r.path)
+    .filter(Boolean)
+    .sort((a, b) => {
+      const na = parseInt(a.match(/\d+/)?.[0] || "0", 10);
+      const nb = parseInt(b.match(/\d+/)?.[0] || "0", 10);
+      return na - nb;
+    });
+
+  if (files.length === 0) {
+    throw new Error("No images generated from PDF");
+  }
+
+  return files.map(f => path.resolve(f));
 }

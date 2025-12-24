@@ -6,8 +6,7 @@ export default function MediaSlideshow({ data = [] }) {
   useEffect(() => {
     if (!data.length) return;
 
-    const current = data[index];
-    const duration = (current.duration || 5) * 1000;
+    const duration = (data[index]?.duration || 5) * 1000;
 
     const timer = setTimeout(() => {
       setIndex((prev) => (prev + 1) % data.length);
@@ -19,33 +18,19 @@ export default function MediaSlideshow({ data = [] }) {
   if (!data.length) {
     return (
       <div className="media-slideshow empty">
-        <p>No media configured</p>
+        No media configured
       </div>
     );
   }
 
-  const item = data[index];
-
   return (
     <div className="media-slideshow">
-      {item.type === "image" && (
-        <img
-          src={item.url}
-          alt="Slide"
-          className="media-image"
-          draggable={false}
-        />
-      )}
-
-      {item.type === "pdf" && (
-        <iframe
-          title="PDF Slide"
-          src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(
-            item.url
-          )}`}
-          className="media-pdf"
-        />
-      )}
+      <img
+        src={data[index].url}
+        alt="Slide"
+        className="media-image"
+        draggable={false}
+      />
     </div>
   );
 }

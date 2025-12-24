@@ -10,7 +10,7 @@ import Spotlight from "./widgets/Spotlight";
 import Stats from "./widgets/Stats";
 import PdfSlideshow from "./widgets/PdfSlideshow";
 import YoutubePlayer from "./widgets/YoutubePlayer";
-import MediaSlideshow from "./widgets/MediaSlideshow";
+import MediaSlideshow from "./widgets/MediaPlaylistEditor";
 
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";

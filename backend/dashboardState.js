@@ -15,4 +15,4 @@ const dashboardState = {
   urgent_alert: null,
 };
 
-module.exports = dashboardState;
+export default dashboardState;

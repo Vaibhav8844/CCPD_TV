@@ -3,42 +3,63 @@ import axios from "axios";
 import { BACKEND_URL } from "../../config";
 
 export default function PdfSlideshow() {
-  const [urls, setUrls] = useState("");
+  const [file, setFile] = useState(null);
   const [interval, setIntervalTime] = useState(5);
+  const [loading, setLoading] = useState(false);
 
-  const saveSlides = async () => {
-    const images = urls
-      .split("\n")
-      .map((u) => u.trim())
-      .filter(Boolean);
-
-    if (images.length === 0) {
-      alert("Please enter at least one image URL");
+  const uploadAndSave = async () => {
+    if (!file) {
+      alert("Please select a PDF file");
       return;
     }
 
-    await axios.post(`${BACKEND_URL}/update-widget`, {
-      widget: "pdfslideshow",
-      data: {
-        images,
-        interval
-      }
-    });
+    const form = new FormData();
+    form.append("file", file);
+    form.append("duration", interval);
 
-    alert("Slides sent to TV");
+    try {
+      setLoading(true);
+
+      // 1️⃣ Upload PDF → backend converts to images
+      const res = await axios.post(
+        `${BACKEND_URL}/upload-file`,
+        form
+      );
+
+      // Backend returns image slides
+      const images = res.data.items.map(i => i.url);
+
+      // 2️⃣ Send images to TV (same widget as before)
+      await axios.post(`${BACKEND_URL}/update-widget`, {
+        widget: "pdfslideshow",
+        data: {
+          images,
+          interval
+        }
+      });
+
+      alert("PDF slideshow sent to TV");
+      setFile(null);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to upload PDF");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="editor">
-      <h4>PDF Slideshow (Images)</h4>
+      <h4>PDF Slideshow</h4>
 
-      <textarea
-        placeholder="Paste image URLs (one per line)"
-        rows={6}
-        value={urls}
-        onChange={(e) => setUrls(e.target.value)}
+      {/* PDF Picker */}
+      <input
+        type="file"
+        accept="application/pdf"
+        onChange={(e) => setFile(e.target.files[0])}
       />
 
+      {/* Interval */}
       <input
         type="number"
         min="1"
@@ -47,7 +68,9 @@ export default function PdfSlideshow() {
         placeholder="Seconds per slide"
       />
 
-      <button onClick={saveSlides}>Save</button>
+      <button onClick={uploadAndSave} disabled={loading}>
+        {loading ? "Uploading..." : "Upload & Save"}
+      </button>
     </div>
   );
 }

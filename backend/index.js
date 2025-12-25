@@ -60,9 +60,9 @@ app.post("/update-widget", (req, res) => {
 });
 
 app.post("/clear-widgets", (req, res) => {
-  Object.keys(dashboardState.widgets).forEach(key => {
-    dashboardState.widgets[key] = [];
-  });
+  // Object.keys(dashboardState.widgets).forEach(key => {
+  //   dashboardState.widgets[key] = [];
+  // });
 
   io.emit("DASHBOARD_UPDATE", dashboardState);
   res.send({ success: true });

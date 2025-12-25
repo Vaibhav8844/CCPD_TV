@@ -43,6 +43,8 @@ export default function LayoutEditor() {
 
   const canvasRef = useRef(null);
   const [gridWidth, setGridWidth] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
 
   useEffect(() => {
     if (canvasRef.current) {
@@ -94,8 +96,8 @@ export default function LayoutEditor() {
     setMsg("");
 
     try {
+      setLayout([]);
       await axios.post(`${BACKEND_URL}/clear-widgets`);
-      setItems([]);
       setMsg("All widgets cleared");
     } catch {
       setMsg("Failed to clear widgets");
@@ -149,8 +151,8 @@ export default function LayoutEditor() {
           width={gridWidth}
           onLayoutChange={handleLayoutChange}
           isResizable
-          compactType={null}
-          verticalCompact={false}
+          compactType="vertical"
+          verticalCompact={true}
           maxRows={6}
           isBounded={true}
           draggableHandle=".widget"

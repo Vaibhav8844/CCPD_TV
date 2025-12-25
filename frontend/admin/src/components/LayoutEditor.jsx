@@ -22,7 +22,7 @@ const WIDGETS = {
   stats: Stats,
   pdfslideshow: PdfSlideshow,
   youtube: YoutubePlayer,
-  mediaSlideshow: MediaSlideshow
+  mediaSlideshow: MediaSlideshow,
 };
 
 const socket = io(BACKEND_URL);
@@ -52,7 +52,6 @@ export default function LayoutEditor() {
 
   const [layout, setLayout] = useState([]);
 
-  /* Add widget only once */
   const isWidgetAdded = (type) =>
     layout.some((item) => item.i.startsWith(type + "-"));
 
@@ -90,9 +89,23 @@ export default function LayoutEditor() {
     });
   };
 
+  const clearWidgets = async () => {
+    setLoading(true);
+    setMsg("");
+
+    try {
+      await axios.post(`${BACKEND_URL}/clear-widgets`);
+      setItems([]);
+      setMsg("All widgets cleared");
+    } catch {
+      setMsg("Failed to clear widgets");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="admin">
-      {/* LEFT PALETTE */}
       <aside className="palette">
         <div className="palette-content">
           <h4>Widgets</h4>
@@ -113,6 +126,16 @@ export default function LayoutEditor() {
             onClick={pushToTV}
           >
             🚀 Push to TV
+          </button>
+          <button
+            className="clear"
+            onClick={() => {
+              if (!window.confirm("Clear all widgets? This cannot be undone."))
+                return;
+              clearWidgets();
+            }}
+          >
+            🗑 Clear All Widgets
           </button>
         </div>
       </aside>

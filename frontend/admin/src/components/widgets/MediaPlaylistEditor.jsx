@@ -1,60 +1,67 @@
 import { useState } from "react";
 import axios from "axios";
 import { BACKEND_URL } from "../../config";
+import PlaylistEditorModal from "../modals/PlaylistEditorModal";
 
-export default function MediaPlaylistEditor() {
+export default function MediaPlaylistWidget() {
   const [items, setItems] = useState([]);
-  const [url, setUrl] = useState("");
-  const [type, setType] = useState("pdf");
-  const [duration, setDuration] = useState(6);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
+  const [open, setOpen] = useState(false);
 
-  /* ADD ITEM */
-  const addItem = () => {
-    if (!url) return;
+  const uploadImage = async (file) => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("duration", 6);
 
-    setItems((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        type,
-        url,
-        duration
-      }
-    ]);
-
-    setUrl("");
-  };
-
-  /* REMOVE */
-  const removeItem = (id) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
-  };
-
-  /* REORDER */
-  const moveItem = (index, dir) => {
-    const copy = [...items];
-    const target = index + dir;
-
-    if (target < 0 || target >= copy.length) return;
-
-    [copy[index], copy[target]] = [copy[target], copy[index]];
-    setItems(copy);
-  };
-
-  /* PUSH TO BACKEND */
-  const save = async () => {
-    if (!items.length) return;
+    setLoading(true);
+    setMsg("");
 
     try {
-      setLoading(true);
-      setMsg("");
+      const res = await axios.post(`${BACKEND_URL}/upload-file`, form);
 
+      setItems((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          sourceType: "image",
+          previewUrl: URL.createObjectURL(file), 
+          backendUrl: res.data.items[0].url,
+          duration: 6,
+        },
+      ]);
+    } catch {
+      setMsg("Upload failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const pickImage = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.multiple = true;
+    input.onchange = (e) => {
+      const files = Array.from(e.target.files);
+      files.forEach(uploadImage);
+    };
+    input.click();
+  };
+
+  /* PUSH PLAYLIST */
+  const save = async () => {
+    setLoading(true);
+    setMsg("");
+
+    try {
       await axios.post(`${BACKEND_URL}/update-playlist`, {
-        playlist: items
+        playlist: items.map((i) => ({
+          type: "image",
+          url: i.backendUrl,
+          duration: i.duration,
+        })),
       });
-
       setMsg("Playlist pushed to TV");
     } catch {
       setMsg("Failed to push playlist");
@@ -67,53 +74,23 @@ export default function MediaPlaylistEditor() {
     <div className="editor-box">
       <h4>Media Playlist</h4>
 
-      {/* ADD FORM */}
-      <div className="row">
-        <select value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="pdf">PDF</option>
-          <option value="image">Image</option>
-        </select>
+      <div className="editor-actions">
+        <button onClick={pickImage}>➕ Add Image</button>
 
-        <input
-          type="url"
-          placeholder="Paste PDF or Image URL"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-        />
+        <button onClick={() => setOpen(true)} disabled={items.length === 0}>
+          ✏️ Edit
+        </button>
 
-        <input
-          type="number"
-          min={2}
-          max={30}
-          value={duration}
-          onChange={(e) => setDuration(+e.target.value)}
-        />
-
-        <button onClick={addItem}>Add</button>
+        <button onClick={save}>Save Playlist</button>
       </div>
 
-      {/* PLAYLIST */}
-      <ul className="playlist">
-        {items.map((item, idx) => (
-          <li key={item.id}>
-            <span>
-              {idx + 1}. {item.type.toUpperCase()} — {item.duration}s
-            </span>
-
-            <div className="controls">
-              <button onClick={() => moveItem(idx, -1)}>↑</button>
-              <button onClick={() => moveItem(idx, 1)}>↓</button>
-              <button onClick={() => removeItem(item.id)}>✕</button>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      <button className="save" onClick={save} disabled={loading}>
-        {loading ? "Saving..." : "Push Playlist to TV"}
-      </button>
-
-      {msg && <p className="status">{msg}</p>}
+      {open && (
+        <PlaylistEditorModal
+          items={items}
+          setItems={setItems}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </div>
   );
 }

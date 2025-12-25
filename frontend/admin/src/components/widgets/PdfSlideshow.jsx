@@ -1,5 +1,5 @@
 import { useState,useEffect } from "react";
-import axios from "axios";
+import api from "../../services/api";
 import { BACKEND_URL } from "../../config";
 import { useDashboard } from "../../context/DashboardContext";
 
@@ -34,14 +34,14 @@ export default function PdfSlideshow() {
     try {
       setLoading(true);
 
-      const res = await axios.post(
+      const res = await api.post(
         `${BACKEND_URL}/upload-file`,
         form
       );
 
       const images = res.data.items.map(i => i.url);
 
-      await axios.post(`${BACKEND_URL}/update-widget`, {
+      await api.post(`${BACKEND_URL}/update-widget`, {
         widget: "pdfslideshow",
         data: {
           images,

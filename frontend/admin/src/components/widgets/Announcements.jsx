@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import api from "../../services/api";
 import { BACKEND_URL } from "../../config";
 
 export default function Announcements() {
@@ -11,7 +11,7 @@ export default function Announcements() {
       .map((t) => t.trim())
       .filter(Boolean);
 
-    await axios.post(`${BACKEND_URL}/update-widget`, {
+    await api.post(`${BACKEND_URL}/update-widget`, {
       widget: "announcements",
       data: announcements
     });

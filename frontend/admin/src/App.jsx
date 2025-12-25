@@ -1,10 +1,19 @@
+import { useState } from "react";
+import Login from "./components/Login";
 import LayoutEditor from "./components/LayoutEditor";
 
 export default function App() {
-  return (
-    <>
-      <h2 className="header">Placement Cell – Admin</h2>
-      <LayoutEditor />
-    </>
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [initialState, setInitialState] = useState(null);
+
+  return loggedIn ? (
+    <LayoutEditor initialState={initialState} />
+  ) : (
+    <Login
+      onLogin={(state) => {
+        setInitialState(state);
+        setLoggedIn(true);
+      }}
+    />
   );
 }

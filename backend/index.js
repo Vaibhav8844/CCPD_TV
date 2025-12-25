@@ -5,6 +5,8 @@ import { pdfToImages } from "./utils/pdfToImages.js";
 import { uploadImageToGithub } from "./utils/uploadImageToGithub.js";
 import { githubPathInfo } from "./utils/githubPathInfo.js";
 import { listGithubFolder } from "./utils/listGithubFolder.js";
+import { requireAuth } from "./middleware/auth.middleware.js";
+import { requireRole } from "./middleware/role.middleware.js";
 
 import express from "express";
 import http from "http";
@@ -15,6 +17,8 @@ import multer from "multer";
 import path from "path";
 
 import dashboardState from "./dashboardState.js";
+import authRoutes from "./routes/auth.routes.js";
+import tvRoutes from "./routes/tv.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,6 +26,9 @@ const upload = multer({ dest: "./tmp/uploads" });
 
 app.use(cors());
 app.use(express.json());
+
+app.use(authRoutes);
+app.use(tvRoutes);
 
 // ---------- Startup tmp cleanup (recommended) ----------
 await fs.ensureDir("./tmp");
@@ -36,17 +43,17 @@ io.on("connection", (socket) => {
 });
 
 // ---------- APIs ----------
-app.get("/dashboard-state", (req, res) => {
+app.get("/dashboard-state",requireAuth,requireRole(["EDITOR", "VIEWER"]), (req, res) => {
   res.json(dashboardState);
 });
 
-app.post("/update-layout", (req, res) => {
+app.post("/update-layout",requireAuth,requireRole(["EDITOR"]), (req, res) => {
   dashboardState.layout = req.body.layout;
   io.emit("DASHBOARD_UPDATE", dashboardState);
   res.send({ success: true });
 });
 
-app.post("/update-widget", (req, res) => {
+app.post("/update-widget",requireAuth, (req, res) => {
   const { widget, data } = req.body;
 
   if (!dashboardState.widgets[widget]) {
@@ -54,12 +61,12 @@ app.post("/update-widget", (req, res) => {
   }
 
   dashboardState.widgets[widget] = data;
-  io.emit("DASHBOARD_UPDATE", dashboardState);
+  // io.emit("DASHBOARD_UPDATE", dashboardState);
 
   res.send({ success: true });
 });
 
-app.post("/clear-widgets", (req, res) => {
+app.post("/clear-widgets",requireAuth,requireRole(["EDITOR"]), (req, res) => {
   // Object.keys(dashboardState.widgets).forEach(key => {
   //   dashboardState.widgets[key] = [];
   // });
@@ -69,7 +76,7 @@ app.post("/clear-widgets", (req, res) => {
 });
 
 // ---------- Playlist Update ----------
-app.post("/update-playlist", async (req, res) => {
+app.post("/update-playlist",requireAuth,requireRole(["EDITOR"]), async (req, res) => {
   const { playlist } = req.body;
 
   try {
@@ -141,7 +148,7 @@ app.post("/update-playlist", async (req, res) => {
   }
 });
 
-app.post("/upload-file", upload.single("file"), async (req, res) => {
+app.post("/upload-file",requireAuth,requireRole(["EDITOR"]), upload.single("file"), async (req, res) => {
   const file = req.file;
   const duration = Number(req.body.duration || 6);
 

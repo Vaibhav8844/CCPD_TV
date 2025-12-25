@@ -158,6 +158,11 @@ body {
   cursor: pointer;
 }
 
+.delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .widget:hover .delete-btn {
   display: flex;
   align-items: center;

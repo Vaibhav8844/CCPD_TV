@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../services/api";
 import { BACKEND_URL } from "../../config";
 import { useDashboard } from "../../context/DashboardContext";
 
@@ -63,7 +63,7 @@ export default function DrivesEditorModal({ onClose }) {
     const sortedDrives = [...drives].sort(
       (a, b) => parseDDMMYYYY(a.date) - parseDDMMYYYY(b.date)
     );
-    await axios.post(`${BACKEND_URL}/update-widget`, {
+    await api.post(`${BACKEND_URL}/update-widget`, {
       widget: "drives",
       data: drives,
     });

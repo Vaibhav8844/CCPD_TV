@@ -1,0 +1,20 @@
+[
+  {
+    "id": "1",
+    "username": "Vaibhav",
+    "passwordHash": "$2b$10$EXcy3vvN4CZ/eBxu4Ww/4.1pOgSkiemGmxhT5j/DwPnIn6U88mf.y",
+    "role": "EDITOR"
+  },
+  {
+    "id": "2",
+    "username": "editor",
+    "passwordHash": "$2b$10$TlNLVLhkNrNhoAY9R70VB.7nNbyac3cZcDKupDeL0rDT7THxdSR5O",
+    "role": "EDITOR"
+  },
+  {
+    "id": "3",
+    "username": "viewer",
+    "passwordHash": "$2b$10$C93y4lQOgmieazaAx1m1DuerrFGcNQ4RdcUiNe9NLRGNst548G/lO",
+    "role": "VIEWER"
+  }
+]

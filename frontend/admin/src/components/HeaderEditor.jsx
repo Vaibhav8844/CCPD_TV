@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import api from "../services/api";
 import { BACKEND_URL } from "../config";
 
 export default function HeaderEditor() {
@@ -8,7 +8,7 @@ export default function HeaderEditor() {
   const [rightLogo, setRightLogo] = useState("");
 
   const save = async () => {
-    await axios.post(`${BACKEND_URL}/update-header`, {
+    await api.post(`${BACKEND_URL}/update-header`, {
       title,
       leftLogo,
       rightLogo

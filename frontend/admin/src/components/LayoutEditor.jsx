@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { io } from "socket.io-client";
 import GridLayout from "react-grid-layout";
-import axios from "axios";
+import api from "../services/api";
 import { BACKEND_URL } from "../config";
+import { socket } from "../services/socket";
+import { getRole } from "../utils/auth";
 
 import Announcements from "./widgets/Announcements";
 import Drives from "./widgets/Drives";
@@ -25,9 +26,20 @@ const WIDGETS = {
   mediaSlideshow: MediaSlideshow,
 };
 
-const socket = io(BACKEND_URL);
+export default function LayoutEditor({initialState}) {
+  const [layout, setLayout] = useState([]);
+  const hasInitialized = useRef(false);
 
-export default function LayoutEditor() {
+  const role = getRole();
+  const isEditor = role === "EDITOR";
+
+  useEffect(() => {
+    if (initialState?.layout && !hasInitialized.current) {
+      setLayout(initialState.layout);
+      hasInitialized.current = true;
+    }
+  }, [initialState]);
+
   useEffect(() => {
     socket.on("INIT_STATE", (state) => {
       if (state.layout) {
@@ -52,7 +64,19 @@ export default function LayoutEditor() {
     }
   }, []);
 
-  const [layout, setLayout] = useState([]);
+  useEffect(() => {
+  const handleUpdate = (state) => {
+    if (state.layout) {
+      setLayout(state.layout);
+    }
+  };
+
+  socket.on("DASHBOARD_UPDATE", handleUpdate);
+
+  return () => {
+    socket.off("DASHBOARD_UPDATE", handleUpdate);
+  };
+}, []);
 
   const isWidgetAdded = (type) =>
     layout.some((item) => item.i.startsWith(type + "-"));
@@ -77,7 +101,7 @@ export default function LayoutEditor() {
   };
 
   const pushToTV = async () => {
-    await axios.post(`${BACKEND_URL}/update-layout`, { layout });
+    await api.post(`${BACKEND_URL}/update-layout`, { layout });
     alert("Layout pushed to TV");
   };
 
@@ -97,7 +121,7 @@ export default function LayoutEditor() {
 
     try {
       setLayout([]);
-      await axios.post(`${BACKEND_URL}/clear-widgets`);
+      await api.post(`${BACKEND_URL}/clear-widgets`);
       setMsg("All widgets cleared");
     } catch {
       setMsg("Failed to clear widgets");
@@ -115,8 +139,9 @@ export default function LayoutEditor() {
           {Object.keys(WIDGETS).map((key) => (
             <button
               key={key}
-              onClick={() => addWidget(key)}
-              disabled={isWidgetAdded(key)}
+              onClick={() => isEditor && addWidget(key)}
+              disabled={isWidgetAdded(key) || !isEditor}
+              title={!isEditor ? "Read-only access" : isWidgetAdded(key) ? "Widget already added" : `Add ${key} widget`}
             >
               ➕ {key}
             </button>
@@ -125,17 +150,22 @@ export default function LayoutEditor() {
           <button
             className="push"
             onMouseDown={(e) => e.stopPropagation()}
-            onClick={pushToTV}
+            disabled={loading || !isEditor}
+            onClick={isEditor && pushToTV}
+            title={!isEditor ? "Read-only access" : "Upload layout to TV"}
           >
             🚀 Push to TV
           </button>
           <button
             className="clear"
             onClick={() => {
+              if (!isEditor || loading) return;
               if (!window.confirm("Clear all widgets? This cannot be undone."))
                 return;
               clearWidgets();
             }}
+            disabled={loading || !isEditor}
+            title={!isEditor ? "Read-only access" : "Clear all widgets from TV"}
           >
             🗑 Clear All Widgets
           </button>
@@ -150,7 +180,9 @@ export default function LayoutEditor() {
           rowHeight={90}
           width={gridWidth}
           onLayoutChange={handleLayoutChange}
-          isResizable
+          isResizable={isEditor}
+          isDraggable={isEditor}
+          static={!isEditor}
           compactType="vertical"
           verticalCompact={true}
           maxRows={6}
@@ -168,7 +200,9 @@ export default function LayoutEditor() {
               <div key={item.i} className="widget">
                 <button
                   className="delete-btn"
-                  onClick={() => removeWidget(item.i)}
+                  onClick={() => isEditor && removeWidget(item.i)}
+                  disabled={!isEditor}
+                  title={!isEditor ? "Read-only access" : "Delete widget"}
                 >
                   ✕
                 </button>

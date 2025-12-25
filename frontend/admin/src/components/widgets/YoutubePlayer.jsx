@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import api from "../../services/api";
 import { BACKEND_URL } from "../../config";
 
 function extractVideoId(url) {
@@ -20,7 +20,7 @@ export default function YoutubePlayer() {
     const videoId = extractVideoId(url);
     if (!videoId) return alert("Invalid YouTube URL");
 
-    await axios.post(`${BACKEND_URL}/update-widget`, {
+    await api.post(`${BACKEND_URL}/update-widget`, {
       widget: "youtube",
       data: {
         videoId,

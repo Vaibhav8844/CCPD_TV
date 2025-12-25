@@ -1,5 +1,5 @@
 import { useState,useEffect } from "react";
-import axios from "axios";
+import api from "../../services/api";
 import { BACKEND_URL } from "../../config";
 import PlaylistEditorModal from "../modals/PlaylistEditorModal";
 import { useDashboard } from "../../context/DashboardContext";
@@ -36,7 +36,7 @@ export default function MediaPlaylistWidget() {
     setMsg("");
 
     try {
-      const res = await axios.post(`${BACKEND_URL}/upload-file`, form);
+      const res = await api.post(`${BACKEND_URL}/upload-file`, form);
 
       setItems((prev) => [
         ...prev,
@@ -73,7 +73,7 @@ export default function MediaPlaylistWidget() {
     setMsg("");
 
     try {
-      await axios.post(`${BACKEND_URL}/update-playlist`, {
+      await api.post(`${BACKEND_URL}/update-playlist`, {
         playlist: items.map((i) => ({
           type: "image",
           url: i.backendUrl,

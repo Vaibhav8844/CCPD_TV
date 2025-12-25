@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { io } from "socket.io-client";
-import { BACKEND_URL } from "../../admin/src/config";
+import { socket } from "../src/services/socket";
 
 import Announcements from "./widgets/Announcements";
 import Drives from "./widgets/Drives";
@@ -11,8 +10,6 @@ import YoutubePlayer from "./widgets/YoutubePlayer";
 import MediaSlideshow from "./widgets/MediaSlideshow";
 
 import logoLeft from "../src/assets/NITW_Logo2.png";
-
-const socket = io(BACKEND_URL);
 
 const WIDGETS = {
   announcements: Announcements,

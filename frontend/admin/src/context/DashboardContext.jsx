@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import axios from "axios";
+import api from "../services/api";
 import { BACKEND_URL } from "../config";
 
 const DashboardContext = createContext(null);
@@ -11,7 +11,7 @@ export function DashboardProvider({ children }) {
   useEffect(() => {
     const loadState = async () => {
       try {
-        const res = await axios.get(`${BACKEND_URL}/dashboard-state`);
+        const res = await api.get(`${BACKEND_URL}/dashboard-state`);
         setDashboard(res.data);
       } catch (err) {
         console.error("Failed to fetch dashboard state", err);

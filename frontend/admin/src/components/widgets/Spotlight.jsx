@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import api from "../../services/api";
 import { BACKEND_URL } from "../../config";
 
 export default function Spotlight() {
@@ -8,7 +8,7 @@ export default function Spotlight() {
   const [ctc, setCtc] = useState("");
 
   const save = async () => {
-    await axios.post(`${BACKEND_URL}/update-widget`, {
+    await api.post(`${BACKEND_URL}/update-widget`, {
       widget: "spotlight",
       data: { company, role, ctc }
     });

@@ -9,9 +9,6 @@ const TOKEN_PATH = path.join(__dirname, '../google-drive-token.json');
 
 export function createOAuth2Client() {
   const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI || 'http://localhost:5000/oauth2callback';
-  console.log('🔧 Creating OAuth client with:');
-  console.log('   Client ID:', process.env.GOOGLE_OAUTH_CLIENT_ID);
-  console.log('   Redirect URI:', redirectUri);
   
   return new google.auth.OAuth2(
     process.env.GOOGLE_OAUTH_CLIENT_ID,
@@ -23,8 +20,7 @@ export function createOAuth2Client() {
 export function getAuthUrl() {
   const oauth2Client = createOAuth2Client();
   const scopes = [
-    'https://www.googleapis.com/auth/drive.file',
-    'https://www.googleapis.com/auth/drive'
+    'https://www.googleapis.com/auth/drive.file'
   ];
 
   const authUrl = oauth2Client.generateAuthUrl({

@@ -2,9 +2,11 @@ import "dotenv/config";
 
 import { hashPdf } from "./utils/hashPdf.js";
 import { pdfToImages } from "./utils/pdfToImages.js";
-import { uploadImageToGithub } from "./utils/uploadImageToGithub.js";
-import { githubPathInfo } from "./utils/githubPathInfo.js";
-import { listGithubFolder } from "./utils/listGithubFolder.js";
+import { uploadToGoogleDrive } from "./utils/uploadToGoogleDrive.js";
+import { googleDrivePathInfo } from "./utils/googleDrivePathInfo.js";
+import { listGoogleDriveFolder } from "./utils/listGoogleDriveFolder.js";
+import { createGoogleDriveFolder } from "./utils/createGoogleDriveFolder.js";
+import { getAuthUrl, createOAuth2Client, saveToken } from "./utils/googleDriveOAuth.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { requireRole } from "./middleware/role.middleware.js";
 
@@ -15,6 +17,7 @@ import cors from "cors";
 import fs from "fs-extra";
 import multer from "multer";
 import path from "path";
+import pLimit from "p-limit";
 
 import dashboardState from "./dashboardState.js";
 import authRoutes from "./routes/auth.routes.js";
@@ -48,6 +51,110 @@ io.on("connection", (socket) => {
 });
 
 // ---------- APIs ----------
+// OAuth2 authorization route
+app.get("/auth/google", (req, res) => {
+  const authUrl = getAuthUrl();
+  res.redirect(authUrl);
+});
+
+// OAuth2 callback route
+app.get("/oauth2callback", async (req, res) => {
+  const { code } = req.query;
+  
+  if (!code) {
+    return res.status(400).send("Authorization code not found");
+  }
+
+  try {
+    const oauth2Client = createOAuth2Client();
+    const { tokens } = await oauth2Client.getToken(code);
+    saveToken(tokens);
+    
+    res.send(`
+      <html>
+        <head>
+          <title>Authorization Successful</title>
+          <style>
+            body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+            h1 { color: #4CAF50; }
+            p { line-height: 1.6; }
+          </style>
+        </head>
+        <body>
+          <h1>✅ Authorization Successful!</h1>
+          <p>You can now close this window and return to your application.</p>
+          <p>The token has been saved and your Google Drive uploads will now work.</p>
+          <p><strong>Next steps:</strong></p>
+          <ul>
+            <li>Return to your admin dashboard</li>
+            <li>Try uploading a file to test the integration</li>
+          </ul>
+        </body>
+      </html>
+    `);
+  } catch (error) {
+    console.error("Error getting token:", error);
+    res.status(500).send("Error during authorization: " + error.message);
+  }
+});
+
+// Proxy endpoint to serve Google Drive files without CORS issues
+app.get("/proxy/drive/:fileId", async (req, res) => {
+  const { fileId } = req.params;
+  
+  try {
+    const { getDriveClient } = await import("./utils/googleDriveOAuth.js");
+    const drive = await getDriveClient();
+    
+    const fileMeta = await drive.files.get({
+      fileId: fileId,
+      fields: 'mimeType'
+    });
+    
+    const response = await drive.files.get(
+      { fileId: fileId, alt: 'media' },
+      { responseType: 'stream' }
+    );
+    
+    res.setHeader('Content-Type', fileMeta.data.mimeType);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    
+    // Handle client disconnect
+    const cleanup = () => {
+      if (response.data && !response.data.destroyed) {
+        response.data.destroy();
+      }
+    };
+
+    req.on('close', cleanup);
+    req.on('error', cleanup);
+
+    // Handle stream errors (suppress EOF errors from client disconnects)
+    response.data.on('error', (err) => {
+      if (err.code !== 'EOF' && err.code !== 'EPIPE') {
+        console.error("Stream error:", err);
+      }
+      cleanup();
+    });
+
+    res.on('error', (err) => {
+      if (err.code !== 'EOF' && err.code !== 'EPIPE') {
+        console.error("Response error:", err);
+      }
+      cleanup();
+    });
+    
+    response.data.pipe(res);
+    
+  } catch (error) {
+    console.error("Proxy error:", error);
+    if (!res.headersSent) {
+      res.status(500).send("Failed to fetch file");
+    }
+  }
+});
+
 app.get("/dashboard-state",requireAuth,requireRole(["EDITOR", "VIEWER"]), (req, res) => {
   res.json(dashboardState);
 });
@@ -66,15 +173,10 @@ app.post("/update-widget",requireAuth, (req, res) => {
   }
 
   dashboardState.widgets[widget] = data;
-  // io.emit("DASHBOARD_UPDATE", dashboardState);
-
   res.send({ success: true });
 });
 
 app.post("/clear-widgets",requireAuth,requireRole(["EDITOR"]), (req, res) => {
-  // Object.keys(dashboardState.widgets).forEach(key => {
-  //   dashboardState.widgets[key] = [];
-  // });
   dashboardState.layout = [];
   io.emit("DASHBOARD_UPDATE", dashboardState);
   res.send({ success: true });
@@ -116,15 +218,15 @@ app.post("/update-playlist",requireAuth,requireRole(["EDITOR"]), async (req, res
 
           let imageUrls = [];
 
-          const info = await githubPathInfo(folder);
+          const info = await googleDrivePathInfo(folder);
           if (info.exists && info.type === "folder") {
-            imageUrls = await listGithubFolder(folder);
+            imageUrls = await listGoogleDriveFolder(folder);
           } else {
             const images = await pdfToImages(pdfPath, workDir);
 
             for (let i = 0; i < images.length; i++) {
               const remote = `${folder}/page_${i + 1}.png`;
-              const url = await uploadImageToGithub(images[i], remote);
+              const url = await uploadToGoogleDrive(images[i], remote);
               imageUrls.push(url);
             }
           }
@@ -169,12 +271,11 @@ app.post("/upload-audio",requireAuth,requireRole(["EDITOR"]), upload.single("fil
       return res.status(400).send({ error: "Only audio files (.mp3, .wav, .ogg, .m4a) are allowed" });
     }
 
-    // Generate unique filename for GitHub
-    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-    const remotePath = `audio/${filename}`;
+    // Use original filename
+    const remotePath = `audio/${file.originalname}`;
 
-    // Upload to GitHub
-    const audioUrl = await uploadImageToGithub(file.path, remotePath);
+    // Upload to Google Drive (will reuse if already exists)
+    const audioUrl = await uploadToGoogleDrive(file.path, remotePath);
 
     // Clean up temporary file
     await fs.remove(file.path);
@@ -207,12 +308,11 @@ app.post("/upload-video",requireAuth,requireRole(["EDITOR"]), upload.single("fil
       return res.status(400).send({ error: "Only video files (.mp4, .webm, .ogg, .mov) are allowed" });
     }
 
-    // Generate unique filename for GitHub
-    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-    const remotePath = `videos/${filename}`;
+    // Use original filename
+    const remotePath = `videos/${file.originalname}`;
 
-    // Upload to GitHub
-    const videoUrl = await uploadImageToGithub(file.path, remotePath);
+    // Upload to Google Drive (will reuse if already exists)
+    const videoUrl = await uploadToGoogleDrive(file.path, remotePath);
 
     // Clean up temporary file
     await fs.remove(file.path);
@@ -254,7 +354,7 @@ app.post("/upload-file",requireAuth,requireRole(["EDITOR"]), upload.single("file
     if ([".png", ".jpg", ".jpeg", ".webp"].includes(ext)) {
       const hash = hashPdf(localPath);
       const remote = `slides/images/${hash}${ext}`;
-      const url = await uploadImageToGithub(localPath, remote);
+      const url = await uploadToGoogleDrive(localPath, remote);
 
       items.push({
         type: "image",
@@ -263,22 +363,50 @@ app.post("/upload-file",requireAuth,requireRole(["EDITOR"]), upload.single("file
       });
     } else if (ext === ".pdf") {
       /* ---------- PDF ---------- */
-      const hash = hashPdf(localPath);
-      const folder = `slides/${hash}`;
+      const pdfName = path.basename(file.originalname, ext);
+      const folder = `slides/${pdfName}`;
+
+      console.log(`Processing PDF: ${file.originalname}`);
+      console.log(`Target folder: ${folder}`);
 
       let urls = [];
 
-      const info = await githubPathInfo(folder);
+      const info = await googleDrivePathInfo(folder);
 
       if (info.exists && info.type === "folder") {
-        urls = await listGithubFolder(folder);
+        console.log(`Folder ${folder} already exists, loading existing images...`);
+        urls = await listGoogleDriveFolder(folder);
+        console.log(`Found ${urls.length} existing images`);
       } else {
-        const images = await pdfToImages(localPath, workDir);
+        console.log(`Uploading PDF to Google Drive...`);
+        const pdfRemotePath = `pdfs/${file.originalname}`;
+        const pdfUrl = await uploadToGoogleDrive(localPath, pdfRemotePath);
+        console.log(`PDF uploaded: ${pdfUrl}`);
 
-        for (let i = 0; i < images.length; i++) {
-          const remote = `${folder}/page_${i + 1}.png`;
-          urls.push(await uploadImageToGithub(images[i], remote));
-        }
+        console.log(`Converting PDF to images...`);
+        const images = await pdfToImages(localPath, workDir);
+        console.log(`PDF converted to ${images.length} images`);
+
+        console.log(`Creating Google Drive folder: ${folder}`);
+        const targetFolderId = await createGoogleDriveFolder(folder);
+        console.log(`Folder created/found with ID: ${targetFolderId}`);
+
+        console.log(`Starting parallel upload of ${images.length} images to Google Drive folder: ${folder}`);
+
+        // Upload images in parallel with concurrency limit of 10
+        const limit = pLimit(10);
+        const uploadPromises = images.map((imagePath, i) =>
+          limit(async () => {
+            const fileName = `page_${i + 1}.png`;
+            console.log(`Uploading image ${i + 1}/${images.length}: ${fileName}`);
+            const url = await uploadToGoogleDrive(imagePath, fileName, targetFolderId);
+            console.log(`✓ Uploaded ${i + 1}/${images.length}`);
+            return url;
+          })
+        );
+
+        urls = await Promise.all(uploadPromises);
+        console.log(`All ${images.length} images uploaded successfully`);
       }
 
       urls.forEach((url) => {

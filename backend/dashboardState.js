@@ -9,7 +9,7 @@ const dashboardState = {
       url: "",
       interval: 5,
     },
-    youtube: {
+    youtube: {  
       videoSource: "youtube", // "youtube" or "uploaded"
       videoId: "",
       videoUrl: "",

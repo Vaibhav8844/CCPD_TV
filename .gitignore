@@ -18,3 +18,8 @@ Thumbs.db
 # Logs
 logs/
 *.log
+
+backend/tmp
+backend/google-drive-token.json
+backend/users/users.json    
+backend/.env

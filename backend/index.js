@@ -27,11 +27,16 @@ const upload = multer({ dest: "./tmp/uploads" });
 app.use(cors());
 app.use(express.json());
 
+// Serve uploaded videos
+app.use('/uploads', express.static('./uploads'));
+
 app.use(authRoutes);
 app.use(tvRoutes);
 
 // ---------- Startup tmp cleanup (recommended) ----------
 await fs.ensureDir("./tmp");
+await fs.ensureDir("./uploads/videos");
+await fs.ensureDir("./uploads/audio");
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
@@ -145,6 +150,82 @@ app.post("/update-playlist",requireAuth,requireRole(["EDITOR"]), async (req, res
   } catch (err) {
     console.error(err);
     res.status(500).send({ error: "Failed to update playlist" });
+  }
+});
+
+app.post("/upload-audio",requireAuth,requireRole(["EDITOR"]), upload.single("file"), async (req, res) => {
+  const file = req.file;
+
+  if (!file) {
+    return res.status(400).send({ error: "No file uploaded" });
+  }
+
+  try {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const audioExts = [".mp3", ".wav", ".ogg", ".m4a"];
+
+    if (!audioExts.includes(ext)) {
+      await fs.remove(file.path);
+      return res.status(400).send({ error: "Only audio files (.mp3, .wav, .ogg, .m4a) are allowed" });
+    }
+
+    // Generate unique filename
+    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    const audioPath = path.join("./uploads/audio", filename);
+
+    // Move file to permanent location
+    await fs.move(file.path, audioPath);
+
+    // Return URL accessible from frontend
+    const audioUrl = `/uploads/audio/${filename}`;
+
+    res.send({
+      success: true,
+      url: audioUrl,
+      filename: file.originalname
+    });
+  } catch (err) {
+    console.error(err);
+    await fs.remove(file.path).catch(() => {});
+    res.status(500).send({ error: "Upload failed" });
+  }
+});
+
+app.post("/upload-video",requireAuth,requireRole(["EDITOR"]), upload.single("file"), async (req, res) => {
+  const file = req.file;
+
+  if (!file) {
+    return res.status(400).send({ error: "No file uploaded" });
+  }
+
+  try {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const videoExts = [".mp4", ".webm", ".ogg", ".mov"];
+
+    if (!videoExts.includes(ext)) {
+      await fs.remove(file.path);
+      return res.status(400).send({ error: "Only video files (.mp4, .webm, .ogg, .mov) are allowed" });
+    }
+
+    // Generate unique filename
+    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    const videoPath = path.join("./uploads/videos", filename);
+
+    // Move file to permanent location
+    await fs.move(file.path, videoPath);
+
+    // Return URL accessible from frontend
+    const videoUrl = `/uploads/videos/${filename}`;
+
+    res.send({
+      success: true,
+      url: videoUrl,
+      filename: file.originalname
+    });
+  } catch (err) {
+    console.error(err);
+    await fs.remove(file.path).catch(() => {});
+    res.status(500).send({ error: "Upload failed" });
   }
 });
 

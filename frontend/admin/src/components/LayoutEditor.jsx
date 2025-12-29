@@ -12,6 +12,7 @@ import Stats from "./widgets/Stats";
 import PdfSlideshow from "./widgets/PdfSlideshow";
 import YoutubePlayer from "./widgets/YoutubePlayer";
 import MediaSlideshow from "./widgets/MediaPlaylistEditor";
+import BackgroundMusic from "./widgets/BackgroundMusic";
 
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -169,6 +170,10 @@ export default function LayoutEditor({initialState}) {
           >
             🗑 Clear All Widgets
           </button>
+
+          <div style={{ marginTop: "20px", borderTop: "2px solid #ddd", paddingTop: "15px" }}>
+            <BackgroundMusic />
+          </div>
         </div>
       </aside>
 

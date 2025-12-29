@@ -8,6 +8,7 @@ import Stats from "./widgets/Stats";
 import PdfSlideshow from "./widgets/PdfSlideshow";
 import YoutubePlayer from "./widgets/YoutubePlayer";
 import MediaSlideshow from "./widgets/MediaSlideshow";
+import BackgroundMusic from "./widgets/BackgroundMusic";
 
 import logoLeft from "../src/assets/NITW_Logo2.png";
 
@@ -18,7 +19,8 @@ const WIDGETS = {
   stats: Stats,
   pdfslideshow: PdfSlideshow,
   youtube: YoutubePlayer,
-  mediaSlideshow: MediaSlideshow
+  mediaSlideshow: MediaSlideshow,
+  backgroundMusic: BackgroundMusic
 };
 
 export default function App() {
@@ -47,6 +49,9 @@ export default function App() {
 
   return (
     <div className="tv-root">
+      {/* Background Music - Always Present */}
+      <BackgroundMusic data={widgets.backgroundMusic} />
+      
       <header className="tv-header">
         <img
           src={logoLeft}

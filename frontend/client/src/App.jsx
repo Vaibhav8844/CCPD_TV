@@ -20,7 +20,7 @@ const WIDGETS = {
   pdfslideshow: PdfSlideshow,
   youtube: YoutubePlayer,
   mediaSlideshow: MediaSlideshow,
-  backgroundMusic: BackgroundMusic
+  backgroundMusic: BackgroundMusic,
 };
 
 export default function App() {
@@ -32,12 +32,12 @@ export default function App() {
 
   useEffect(() => {
     socket.on("INIT_STATE", (state) => {
-    setLayout(state.layout || []);
-    setWidgets(state.widgets || {});
-    setHeader(state.header || {});
-    setLayoutTemplate(state.layoutTemplate || null);
-    setWidgetSlots(state.widgetSlots || {});
-  });
+      setLayout(state.layout || []);
+      setWidgets(state.widgets || {});
+      setHeader(state.header || {});
+      setLayoutTemplate(state.layoutTemplate || null);
+      setWidgetSlots(state.widgetSlots || {});
+    });
 
     socket.on("DASHBOARD_UPDATE", (state) => {
       setLayout(state.layout || []);
@@ -47,29 +47,30 @@ export default function App() {
       setWidgetSlots(state.widgetSlots || {});
     });
 
-    socket.on("WIDGET_UPDATE", (data) => {
-      // Only update widgets, preserve layout
-      setWidgets(data.widgets || {});
+    socket.on("WIDGET_UPDATE", (state) => {
+      if (state.widgets) {
+        setWidgets(state.widgets);
+      }
     });
 
     return () => {
-    socket.off("INIT_STATE");
-    socket.off("DASHBOARD_UPDATE");
-    socket.off("WIDGET_UPDATE");
-  };
+      socket.off("INIT_STATE");
+      socket.off("DASHBOARD_UPDATE");
+      socket.off("WIDGET_UPDATE");
+    };
   }, []);
 
   return (
     <div className="tv-root">
       {/* Background Music - Always Present */}
       <BackgroundMusic data={widgets.backgroundMusic} />
-      
+
       <header className="tv-header">
         <img
           src={logoLeft}
           alt="Left Logo"
           className="tv-logo left"
-          style={{ marginRight: '20px' }}
+          style={{ marginRight: "20px" }}
         />
         Center for Career Planning and Development
       </header>
@@ -77,8 +78,8 @@ export default function App() {
       <div className="tv-canvas">
         {layout.map((item) => {
           let type, Comp;
-          
-          if (layoutTemplate === 'custom' || !layoutTemplate) {
+
+          if (layoutTemplate === "custom" || !layoutTemplate) {
             // Custom layout or legacy: widget type is in the item id
             type = item.i.split("-")[0];
             Comp = WIDGETS[type];
@@ -96,7 +97,7 @@ export default function App() {
               className="tv-widget"
               style={{
                 gridColumn: `${item.x + 1} / span ${item.w}`,
-                gridRow: `${item.y + 1} / span ${item.h}`
+                gridRow: `${item.y + 1} / span ${item.h}`,
               }}
             >
               <Comp data={widgets[type]} />

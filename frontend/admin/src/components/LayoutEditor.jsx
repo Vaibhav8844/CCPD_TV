@@ -39,22 +39,20 @@ const WIDGET_LABELS = {
 
 // Layout templates
 const LAYOUT_TEMPLATES = {
-  single: [
-    { i: 'slot-1', x: 0, y: 0, w: 12, h: 6, static: true }
-  ],
+  single: [{ i: "slot-1", x: 0, y: 0, w: 12, h: 6, static: true }],
   double: [
-    { i: 'slot-1', x: 0, y: 0, w: 6, h: 6, static: true },
-    { i: 'slot-2', x: 6, y: 0, w: 6, h: 6, static: true }
+    { i: "slot-1", x: 0, y: 0, w: 6, h: 6, static: true },
+    { i: "slot-2", x: 6, y: 0, w: 6, h: 6, static: true },
   ],
   quad: [
-    { i: 'slot-1', x: 0, y: 0, w: 6, h: 3, static: true },
-    { i: 'slot-2', x: 6, y: 0, w: 6, h: 3, static: true },
-    { i: 'slot-3', x: 0, y: 3, w: 6, h: 3, static: true },
-    { i: 'slot-4', x: 6, y: 3, w: 6, h: 3, static: true }
-  ]
+    { i: "slot-1", x: 0, y: 0, w: 6, h: 3, static: true },
+    { i: "slot-2", x: 6, y: 0, w: 6, h: 3, static: true },
+    { i: "slot-3", x: 0, y: 3, w: 6, h: 3, static: true },
+    { i: "slot-4", x: 6, y: 3, w: 6, h: 3, static: true },
+  ],
 };
 
-function LayoutEditor({initialState}) {
+function LayoutEditor({ initialState }) {
   const [layoutTemplate, setLayoutTemplate] = useState(null); // null, 'single', 'double', 'quad', 'custom'
   const [layout, setLayout] = useState([]);
   const [widgetSlots, setWidgetSlots] = useState({}); // Maps slot-id to widget type
@@ -72,7 +70,7 @@ function LayoutEditor({initialState}) {
         setWidgetSlots(initialState.widgetSlots || {});
       } else {
         // Legacy: if no template, assume custom
-        setLayoutTemplate('custom');
+        setLayoutTemplate("custom");
       }
       setLayout(initialState.layout);
       hasInitialized.current = true;
@@ -109,22 +107,22 @@ function LayoutEditor({initialState}) {
         setGridHeight(canvasRef.current.offsetHeight);
       }
     };
-    
+
     updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    
+    window.addEventListener("resize", updateDimensions);
+
     // Also update when layoutTemplate changes
     if (layoutTemplate) {
       setTimeout(updateDimensions, 50);
     }
-    
-    return () => window.removeEventListener('resize', updateDimensions);
+
+    return () => window.removeEventListener("resize", updateDimensions);
   }, [layoutTemplate]);
 
   useEffect(() => {
     // Handle layout updates (from /update-layout endpoint)
     const handleDashboardUpdate = (state) => {
-      if (state && typeof state === 'object') {
+      if (state && typeof state === "object") {
         if (state.layout) {
           setLayout(state.layout);
         }
@@ -143,7 +141,14 @@ function LayoutEditor({initialState}) {
     };
 
     socket.on("DASHBOARD_UPDATE", handleDashboardUpdate);
-    socket.on("WIDGET_UPDATE", handleWidgetUpdate);
+    socket.on("WIDGET_UPDATE", (state) => {
+      if (state.widgets) {
+        setDashboardState((prev) => ({
+          ...prev,
+          widgets: state.widgets,
+        }));
+      }
+    });
 
     return () => {
       socket.off("DASHBOARD_UPDATE", handleDashboardUpdate);
@@ -154,12 +159,12 @@ function LayoutEditor({initialState}) {
   const selectLayoutTemplate = (template) => {
     setLayoutTemplate(template);
     setWidgetSlots({});
-    if (template === 'custom') {
+    if (template === "custom") {
       setLayout([]);
     } else {
       setLayout(LAYOUT_TEMPLATES[template]);
     }
-    
+
     // Update dimensions after template is selected
     setTimeout(() => {
       if (canvasRef.current) {
@@ -170,15 +175,15 @@ function LayoutEditor({initialState}) {
   };
 
   const assignWidgetToSlot = (slotId, widgetType) => {
-    setWidgetSlots(prev => ({
+    setWidgetSlots((prev) => ({
       ...prev,
-      [slotId]: widgetType
+      [slotId]: widgetType,
     }));
     setShowWidgetSelector(null);
   };
 
   const removeWidgetFromSlot = (slotId) => {
-    setWidgetSlots(prev => {
+    setWidgetSlots((prev) => {
       const updated = { ...prev };
       delete updated[slotId];
       return updated;
@@ -186,7 +191,7 @@ function LayoutEditor({initialState}) {
   };
 
   const isWidgetAdded = (type) => {
-    if (layoutTemplate === 'custom') {
+    if (layoutTemplate === "custom") {
       return layout.some((item) => item.i.startsWith(type + "-"));
     } else {
       // Check if widget is already assigned to any slot
@@ -195,7 +200,7 @@ function LayoutEditor({initialState}) {
   };
 
   const addWidget = (type) => {
-    if (layoutTemplate !== 'custom') return; // Only for custom layout
+    if (layoutTemplate !== "custom") return; // Only for custom layout
     if (isWidgetAdded(type)) return;
 
     setLayout((prev) => [
@@ -216,10 +221,10 @@ function LayoutEditor({initialState}) {
 
   const pushToTV = async () => {
     try {
-      await api.post(`${BACKEND_URL}/update-layout`, { 
+      await api.post(`${BACKEND_URL}/update-layout`, {
         layout,
         layoutTemplate,
-        widgetSlots
+        widgetSlots,
       });
       alert("Layout pushed to TV");
     } catch (error) {
@@ -257,114 +262,125 @@ function LayoutEditor({initialState}) {
   // Layout selection screen
   if (!layoutTemplate) {
     return (
-      <div className="admin" style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        height: '100vh',
-        background: '#020617'
-      }}>
-        <div style={{
-          background: '#0f172a',
-          padding: '40px',
-          borderRadius: '16px',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-          border: '1px solid #1e293b',
-          maxWidth: '600px',
-          width: '90%'
-        }}>
-          <h2 style={{ textAlign: 'center', marginBottom: '30px', color: '#e5e7eb' }}>
+      <div
+        className="admin"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          background: "#020617",
+        }}
+      >
+        <div
+          style={{
+            background: "#0f172a",
+            padding: "40px",
+            borderRadius: "16px",
+            boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
+            border: "1px solid #1e293b",
+            maxWidth: "600px",
+            width: "90%",
+          }}
+        >
+          <h2
+            style={{
+              textAlign: "center",
+              marginBottom: "30px",
+              color: "#e5e7eb",
+            }}
+          >
             Select Layout Template
           </h2>
-          <div style={{ display: 'grid', gap: '15px' }}>
+          <div style={{ display: "grid", gap: "15px" }}>
             <button
-              onClick={() => selectLayoutTemplate('single')}
+              onClick={() => selectLayoutTemplate("single")}
               style={{
-                padding: '20px',
-                fontSize: '18px',
-                border: '2px solid #3b82f6',
-                borderRadius: '8px',
-                background: '#1e293b',
-                color: '#e5e7eb',
-                cursor: 'pointer',
-                transition: 'all 0.3s'
+                padding: "20px",
+                fontSize: "18px",
+                border: "2px solid #3b82f6",
+                borderRadius: "8px",
+                background: "#1e293b",
+                color: "#e5e7eb",
+                cursor: "pointer",
+                transition: "all 0.3s",
               }}
               onMouseEnter={(e) => {
-                e.target.style.background = '#3b82f6';
-                e.target.style.color = 'white';
+                e.target.style.background = "#3b82f6";
+                e.target.style.color = "white";
               }}
               onMouseLeave={(e) => {
-                e.target.style.background = '#1e293b';
-                e.target.style.color = '#e5e7eb';
+                e.target.style.background = "#1e293b";
+                e.target.style.color = "#e5e7eb";
               }}
             >
               📱 1 Component (Full Screen)
             </button>
             <button
-              onClick={() => selectLayoutTemplate('double')}
+              onClick={() => selectLayoutTemplate("double")}
               style={{
-                padding: '20px',
-                fontSize: '18px',
-                border: '2px solid #3b82f6',
-                borderRadius: '8px',
-                background: '#1e293b',
-                color: '#e5e7eb',
-                cursor: 'pointer',
-                transition: 'all 0.3s'
+                padding: "20px",
+                fontSize: "18px",
+                border: "2px solid #3b82f6",
+                borderRadius: "8px",
+                background: "#1e293b",
+                color: "#e5e7eb",
+                cursor: "pointer",
+                transition: "all 0.3s",
               }}
               onMouseEnter={(e) => {
-                e.target.style.background = '#3b82f6';
-                e.target.style.color = 'white';
+                e.target.style.background = "#3b82f6";
+                e.target.style.color = "white";
               }}
               onMouseLeave={(e) => {
-                e.target.style.background = '#1e293b';
-                e.target.style.color = '#e5e7eb';
+                e.target.style.background = "#1e293b";
+                e.target.style.color = "#e5e7eb";
               }}
             >
               📊 2 Components (Split View)
             </button>
             <button
-              onClick={() => selectLayoutTemplate('quad')}
+              onClick={() => selectLayoutTemplate("quad")}
               style={{
-                padding: '20px',
-                fontSize: '18px',
-                border: '2px solid #3b82f6',
-                borderRadius: '8px',
-                background: '#1e293b',
-                color: '#e5e7eb',
-                cursor: 'pointer',
-                transition: 'all 0.3s'
+                padding: "20px",
+                fontSize: "18px",
+                border: "2px solid #3b82f6",
+                borderRadius: "8px",
+                background: "#1e293b",
+                color: "#e5e7eb",
+                cursor: "pointer",
+                transition: "all 0.3s",
               }}
               onMouseEnter={(e) => {
-                e.target.style.background = '#3b82f6';
-                e.target.style.color = 'white';
+                e.target.style.background = "#3b82f6";
+                e.target.style.color = "white";
               }}
               onMouseLeave={(e) => {
-                e.target.style.background = '#1e293b';
-                e.target.style.color = '#e5e7eb';
+                e.target.style.background = "#1e293b";
+                e.target.style.color = "#e5e7eb";
               }}
             >
               🎯 4 Components (Quad View)
             </button>
             <button
-              onClick={() => selectLayoutTemplate('custom')}
+              onClick={() => selectLayoutTemplate("custom")}
               style={{
-                padding: '20px',
-                fontSize: '18px',
-                border: '2px solid #8b5cf6',
-                borderRadius: '8px',
-                background: '#1e293b',
-                color: '#e5e7eb',
-                cursor: 'pointer',
-                transition: 'all 0.3s'
+                padding: "20px",
+                fontSize: "18px",
+                border: "2px solid #8b5cf6",
+                borderRadius: "8px",
+                background: "#1e293b",
+                color: "#e5e7eb",
+                cursor: "pointer",
+                transition: "all 0.3s",
               }}
               onMouseEnter={(e) => {
-                e.target.style.background = '#8b5cf6';
-                e.target.style.color = 'white';
+                e.target.style.background = "#8b5cf6";
+                e.target.style.color = "white";
               }}
               onMouseLeave={(e) => {
-                e.target.style.background = '#1e293b';
-                e.target.style.color = '#e5e7eb';
+                e.target.style.background = "#1e293b";
+                e.target.style.color = "#e5e7eb";
               }}
             >
               🎨 Custom Layout (Free Form)
@@ -382,19 +398,23 @@ function LayoutEditor({initialState}) {
           <h4>Layout: {layoutTemplate}</h4>
           <button
             onClick={() => {
-              if (window.confirm("Change layout template? Current widgets will be cleared.")) {
+              if (
+                window.confirm(
+                  "Change layout template? Current widgets will be cleared."
+                )
+              ) {
                 setLayoutTemplate(null);
                 setLayout([]);
                 setWidgetSlots({});
               }
             }}
             disabled={!isEditor}
-            style={{ marginBottom: '15px', width: '100%' }}
+            style={{ marginBottom: "15px", width: "100%" }}
           >
             🔄 Change Template
           </button>
 
-          {layoutTemplate === 'custom' ? (
+          {layoutTemplate === "custom" ? (
             <>
               <h4>Widgets</h4>
               {Object.keys(WIDGETS).map((key) => (
@@ -402,7 +422,13 @@ function LayoutEditor({initialState}) {
                   key={key}
                   onClick={() => isEditor && addWidget(key)}
                   disabled={isWidgetAdded(key) || !isEditor}
-                  title={!isEditor ? "Read-only access" : isWidgetAdded(key) ? "Widget already added" : `Add ${WIDGET_LABELS[key]} widget`}
+                  title={
+                    !isEditor
+                      ? "Read-only access"
+                      : isWidgetAdded(key)
+                      ? "Widget already added"
+                      : `Add ${WIDGET_LABELS[key]} widget`
+                  }
                 >
                   {WIDGET_LABELS[key]}
                 </button>
@@ -412,15 +438,31 @@ function LayoutEditor({initialState}) {
             <>
               <h4>Assigned Widgets</h4>
               {layout.map((slot) => (
-                <div key={slot.i} style={{ marginBottom: '10px', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>{slot.i}</div>
+                <div
+                  key={slot.i}
+                  style={{
+                    marginBottom: "10px",
+                    padding: "10px",
+                    border: "1px solid #ddd",
+                    borderRadius: "4px",
+                  }}
+                >
+                  <div style={{ fontWeight: "bold", marginBottom: "5px" }}>
+                    {slot.i}
+                  </div>
                   {widgetSlots[slot.i] ? (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
                       <span>{WIDGET_LABELS[widgetSlots[slot.i]]}</span>
                       <button
                         onClick={() => isEditor && removeWidgetFromSlot(slot.i)}
                         disabled={!isEditor}
-                        style={{ padding: '2px 8px', fontSize: '12px' }}
+                        style={{ padding: "2px 8px", fontSize: "12px" }}
                       >
                         ✕
                       </button>
@@ -429,7 +471,7 @@ function LayoutEditor({initialState}) {
                     <button
                       onClick={() => isEditor && setShowWidgetSelector(slot.i)}
                       disabled={!isEditor}
-                      style={{ width: '100%' }}
+                      style={{ width: "100%" }}
                     >
                       + Assign Widget
                     </button>
@@ -462,7 +504,13 @@ function LayoutEditor({initialState}) {
             🗑 Clear All Widgets
           </button>
 
-          <div style={{ marginTop: "20px", borderTop: "2px solid #ddd", paddingTop: "15px" }}>
+          <div
+            style={{
+              marginTop: "20px",
+              borderTop: "2px solid #ddd",
+              paddingTop: "15px",
+            }}
+          >
             <BackgroundMusic />
           </div>
         </div>
@@ -470,56 +518,63 @@ function LayoutEditor({initialState}) {
 
       {/* Widget Selector Modal */}
       {showWidgetSelector && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(2, 6, 23, 0.85)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: '#0f172a',
-            padding: '30px',
-            borderRadius: '12px',
-            border: '1px solid #1e293b',
-            maxWidth: '400px',
-            width: '90%'
-          }}>
-            <h3 style={{ color: '#e5e7eb', marginTop: 0 }}>Select Widget for {showWidgetSelector}</h3>
-            <div style={{ display: 'grid', gap: '10px', marginTop: '20px' }}>
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(2, 6, 23, 0.85)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              background: "#0f172a",
+              padding: "30px",
+              borderRadius: "12px",
+              border: "1px solid #1e293b",
+              maxWidth: "400px",
+              width: "90%",
+            }}
+          >
+            <h3 style={{ color: "#e5e7eb", marginTop: 0 }}>
+              Select Widget for {showWidgetSelector}
+            </h3>
+            <div style={{ display: "grid", gap: "10px", marginTop: "20px" }}>
               {Object.keys(WIDGETS).map((key) => (
                 <button
                   key={key}
                   onClick={() => assignWidgetToSlot(showWidgetSelector, key)}
                   disabled={isWidgetAdded(key)}
                   style={{
-                    padding: '12px',
-                    border: '2px solid #3b82f6',
-                    borderRadius: '6px',
-                    background: isWidgetAdded(key) ? '#334155' : '#1e293b',
-                    color: isWidgetAdded(key) ? '#94a3b8' : '#e5e7eb',
-                    cursor: isWidgetAdded(key) ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s'
+                    padding: "12px",
+                    border: "2px solid #3b82f6",
+                    borderRadius: "6px",
+                    background: isWidgetAdded(key) ? "#334155" : "#1e293b",
+                    color: isWidgetAdded(key) ? "#94a3b8" : "#e5e7eb",
+                    cursor: isWidgetAdded(key) ? "not-allowed" : "pointer",
+                    transition: "all 0.2s",
                   }}
                 >
-                  {WIDGET_LABELS[key]} {isWidgetAdded(key) ? '(already assigned)' : ''}
+                  {WIDGET_LABELS[key]}{" "}
+                  {isWidgetAdded(key) ? "(already assigned)" : ""}
                 </button>
               ))}
               <button
                 onClick={() => setShowWidgetSelector(null)}
                 style={{
-                  padding: '12px',
-                  marginTop: '10px',
-                  background: '#ef4444',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer'
+                  padding: "12px",
+                  marginTop: "10px",
+                  background: "#ef4444",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
                 }}
               >
                 Cancel
@@ -530,16 +585,20 @@ function LayoutEditor({initialState}) {
       )}
 
       {/* CANVAS */}
-      <main className="canvas" ref={canvasRef} style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <main
+        className="canvas"
+        ref={canvasRef}
+        style={{ position: "relative", width: "100%", height: "100%" }}
+      >
         <GridLayout
           layout={layout}
           cols={12}
           rowHeight={gridHeight > 0 ? Math.floor((gridHeight - 32) / 6) : 60}
           width={gridWidth > 0 ? gridWidth - 32 : 1200}
           onLayoutChange={handleLayoutChange}
-          isResizable={layoutTemplate === 'custom' && isEditor}
-          isDraggable={layoutTemplate === 'custom' && isEditor}
-          static={layoutTemplate !== 'custom' || !isEditor}
+          isResizable={layoutTemplate === "custom" && isEditor}
+          isDraggable={layoutTemplate === "custom" && isEditor}
+          static={layoutTemplate !== "custom" || !isEditor}
           compactType={null}
           verticalCompact={false}
           preventCollision={true}
@@ -550,8 +609,8 @@ function LayoutEditor({initialState}) {
         >
           {layout.map((item) => {
             let type, Comp;
-            
-            if (layoutTemplate === 'custom') {
+
+            if (layoutTemplate === "custom") {
               // Custom layout: widget type is in the item id
               type = item.i.split("-")[0];
               Comp = WIDGETS[type];
@@ -562,20 +621,20 @@ function LayoutEditor({initialState}) {
             }
 
             return (
-              <div 
-                key={item.i} 
+              <div
+                key={item.i}
                 className="widget"
                 style={{
-                  background: '#0f172a',
-                  border: '2px solid #667eea',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  position: 'relative'
+                  background: "#0f172a",
+                  border: "2px solid #667eea",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  position: "relative",
                 }}
               >
-                {layoutTemplate === 'custom' && (
+                {layoutTemplate === "custom" && (
                   <button
                     className="delete-btn"
                     onClick={() => isEditor && removeWidget(item.i)}
@@ -589,14 +648,18 @@ function LayoutEditor({initialState}) {
                 {Comp ? (
                   <Comp />
                 ) : (
-                  <div style={{ 
-                    textAlign: 'center', 
-                    color: '#999',
-                    padding: '20px'
-                  }}>
-                    <div style={{ fontSize: '48px', marginBottom: '10px' }}>📦</div>
+                  <div
+                    style={{
+                      textAlign: "center",
+                      color: "#999",
+                      padding: "20px",
+                    }}
+                  >
+                    <div style={{ fontSize: "48px", marginBottom: "10px" }}>
+                      📦
+                    </div>
                     <div>{item.i}</div>
-                    <div style={{ fontSize: '12px' }}>No widget assigned</div>
+                    <div style={{ fontSize: "12px" }}>No widget assigned</div>
                   </div>
                 )}
               </div>

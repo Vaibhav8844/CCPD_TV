@@ -30,23 +30,12 @@ const PORT = process.env.PORT || 5000;
 const upload = multer({ dest: "./tmp/uploads" });
 
 app.use(cors({
-  origin: true,
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
 app.use(express.json());
-
-// ---------- Startup tmp cleanup (recommended) ----------
-await fs.ensureDir("./tmp");
-
-const server = http.createServer(app);
-const io = new Server(server, { 
-  cors: { 
-    origin: '*',
-    credentials: true
-  } 
-});
 
 // Middleware to attach io to request object
 app.use((req, res, next) => {
@@ -57,6 +46,12 @@ app.use((req, res, next) => {
 app.use(authRoutes);
 app.use(tvRoutes);
 app.use(dashboardRoutes);
+
+// ---------- Startup tmp cleanup (recommended) ----------
+await fs.ensureDir("./tmp");
+
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
 
 // ---------- Socket ----------
 io.on("connection", (socket) => {
@@ -182,8 +177,8 @@ app.post("/update-widget",requireAuth, async (req, res) => {
 
   dashboardState.widgets[widget] = data;
   
-  // Notify connected clients with only widgets data (don't send layout info)
-  io.emit("WIDGET_UPDATE", { widgets: dashboardState.widgets });
+  // Notify connected clients
+  io.emit("DASHBOARD_UPDATE", dashboardState);
   
   // Auto-save to Drive
   saveDashboardState(dashboardState).catch(err => 
@@ -257,7 +252,7 @@ app.post("/update-playlist",requireAuth,requireRole(["EDITOR"]), async (req, res
     }
 
     dashboardState.widgets.mediaSlideshow = finalSlides;
-    io.emit("WIDGET_UPDATE", { widgets: dashboardState.widgets });
+    io.emit("DASHBOARD_UPDATE", dashboardState);
 
     // Auto-save to Drive
     saveDashboardState(dashboardState).catch(err => 
@@ -433,19 +428,16 @@ app.post("/upload-file",requireAuth,requireRole(["EDITOR"]), upload.single("file
   }
 });
 
-// ---------- Load Dashboard State & Start Server ----------
+// ---------- Load Dashboard State ----------
 (async () => {
-  // Load state BEFORE starting server
   const savedState = await loadDashboardState();
   if (savedState) {
     Object.assign(dashboardState, savedState);
     console.log("✓ Dashboard state restored from backup");
-  } else {
-    console.log("✓ Using default dashboard state");
   }
-
-  // Start server only after state is loaded
-  server.listen(PORT, "0.0.0.0", () => {
-    console.log("Backend running on port " + PORT);
-  });
 })();
+
+// ---------- Start Server ----------
+server.listen(PORT, "0.0.0.0", () => {
+  console.log("Backend running on port " + PORT);
+});

@@ -10,6 +10,7 @@ dist/
 
 # Env files
 .env
+backend/.env
 
 # OS
 .DS_Store
@@ -19,7 +20,12 @@ Thumbs.db
 logs/
 *.log
 
-backend/tmp
+# Backend sensitive files
+backend/tmp/
 backend/google-drive-token.json
-backend/users/users.json    
-backend/.env
+backend/users/users.json
+backend/dashboard-state.json
+
+# Frontend
+frontend/*/node_modules/
+frontend/*/dist/

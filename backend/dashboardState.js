@@ -1,5 +1,7 @@
 const dashboardState = {
   layout: [],
+  layoutTemplate: null,
+  widgetSlots: {},
   widgets: {
     announcements: [],
     drives: [],

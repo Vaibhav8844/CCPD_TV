@@ -19,6 +19,7 @@ export default function YoutubePlayer() {
   const [loop, setLoop] = useState(true);
   const [mute, setMute] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const handleVideoUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -52,108 +53,139 @@ export default function YoutubePlayer() {
   const saveVideo = async () => {
     if (videoSource === "youtube") {
       const videoId = extractVideoId(url);
-      if (!videoId) return alert("Invalid YouTube URL");
+      if (!videoId) {
+        alert("⚠️ Invalid YouTube URL\nPlease enter a valid YouTube URL or video ID");
+        return;
+      }
 
-      await api.post(`${BACKEND_URL}/update-widget`, {
-        widget: "youtube",
-        data: {
-          videoSource: "youtube",
-          videoId,
-          videoUrl: "",
-          autoplay: true,
-          mute,
-          loop
-        }
-      });
-
-      alert("YouTube video sent to TV");
+      setSaving(true);
+      try {
+        await api.post(`${BACKEND_URL}/update-widget`, {
+          widget: "youtube",
+          data: {
+            videoSource: "youtube",
+            videoId,
+            videoUrl: "",
+            autoplay: true,
+            mute,
+            loop
+          }
+        });
+        alert(`✓ YouTube video sent to TV!\nVideo ID: ${videoId}`);
+      } catch (error) {
+        alert("❌ Failed to save video. Please try again.");
+      } finally {
+        setSaving(false);
+      }
     } else {
-      if (!uploadedVideoUrl) return alert("Please upload a video first");
+      if (!uploadedVideoUrl) {
+        alert("⚠️ Please upload a video file first");
+        return;
+      }
 
-      await api.post(`${BACKEND_URL}/update-widget`, {
-        widget: "youtube",
-        data: {
-          videoSource: "uploaded",
-          videoId: "",
-          videoUrl: uploadedVideoUrl,
-          autoplay: true,
-          mute,
-          loop
-        }
-      });
-
-      alert("Uploaded video sent to TV");
+      setSaving(true);
+      try {
+        await api.post(`${BACKEND_URL}/update-widget`, {
+          widget: "youtube",
+          data: {
+            videoSource: "uploaded",
+            videoId: "",
+            videoUrl: uploadedVideoUrl,
+            autoplay: true,
+            mute,
+            loop
+          }
+        });
+        alert(`✓ Uploaded video sent to TV!\nFile: ${uploadedFilename}`);
+      } catch (error) {
+        alert("❌ Failed to save video. Please try again.");
+      } finally {
+        setSaving(false);
+      }
     }
   };
 
   return (
-    <div className="editor youtube-editor">
-      <h4>Video Player</h4>
-
-      <div style={{ marginBottom: "15px" }}>
-        <label style={{ display: "block", marginBottom: "10px" }}>
-          <input
-            type="radio"
-            name="videoSource"
-            value="youtube"
-            checked={videoSource === "youtube"}
-            onChange={(e) => setVideoSource(e.target.value)}
-          />
-          {" "}YouTube URL
-        </label>
-
-        <label style={{ display: "block" }}>
-          <input
-            type="radio"
-            name="videoSource"
-            value="uploaded"
-            checked={videoSource === "uploaded"}
-            onChange={(e) => setVideoSource(e.target.value)}
-          />
-          {" "}Upload Video File
-        </label>
+    <div className="widget-container">
+      <div className="widget-header">
+        <h4>Video Player</h4>
       </div>
 
-      {videoSource === "youtube" ? (
-        <div>
-          <input
-            placeholder="YouTube URL or Video ID"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-          />
+      <div className="widget-body">
+        <div className="input-group" style={{ marginBottom: "15px" }}>
+          <label className="radio-label">
+            <input
+              type="radio"
+              name="videoSource"
+              value="youtube"
+              checked={videoSource === "youtube"}
+              onChange={(e) => setVideoSource(e.target.value)}
+            />
+            {" "}YouTube URL
+          </label>
+
+          <label className="radio-label">
+            <input
+              type="radio"
+              name="videoSource"
+              value="uploaded"
+              checked={videoSource === "uploaded"}
+              onChange={(e) => setVideoSource(e.target.value)}
+            />
+            {" "}Upload Video File
+          </label>
         </div>
-      ) : (
-        <div style={{ marginBottom: "15px" }}>
-          <button onClick={pickVideo} disabled={uploading}>
-            {uploading ? "Uploading..." : "📁 Choose Video File"}
-          </button>
-          {uploadedFilename && (
-            <p style={{ margin: "8px 0", fontSize: "14px", color: "#666" }}>
-              Selected: {uploadedFilename}
-            </p>
-          )}
+
+        {videoSource === "youtube" ? (
+          <div className="input-group">
+            <input
+              className="widget-input"
+              placeholder="YouTube URL or Video ID"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+            />
+          </div>
+        ) : (
+          <div className="input-group">
+            <button className="secondary-btn" onClick={pickVideo} disabled={uploading}>
+              {uploading ? "⏳ Uploading..." : "📁 Choose Video File"}
+            </button>
+            {uploadedFilename && (
+              <p className="success-text">
+                ✓ Selected: {uploadedFilename}
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="input-group">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={mute}
+              onChange={() => setMute(!mute)}
+            />
+            Mute (required for autoplay)
+          </label>
         </div>
-      )}
 
-      <label>
-        <input
-          type="checkbox"
-          checked={mute}
-          onChange={() => setMute(!mute)}
-        />
-        Mute (required for autoplay)
-      </label>
+        <div className="input-group">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={loop}
+              onChange={() => setLoop(!loop)}
+            />
+            Loop video
+          </label>
+        </div>
+      </div>
 
-      <label>
-        <input
-          type="checkbox"
-          checked={loop}
-          onChange={() => setLoop(!loop)}
-        />
-        Loop video
-      </label>
-
-      <button onClick={saveVideo}>Play on TV</button>
+      <div className="widget-footer">
+        <button className="widget-btn" onClick={saveVideo} disabled={uploading || saving}>
+          {saving ? "⏳ Sending to TV..." : "📺 Play on TV"}
+        </button>
+      </div>
     </div>
   );
 }

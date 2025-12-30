@@ -11,9 +11,7 @@ export default function BackgroundMusic({ data }) {
 
     if (data?.enabled && data?.musicUrl) {
       audio.volume = data.volume || 0.3;
-      audio.play().catch(err => {
-        console.log("Autoplay prevented:", err);
-      });
+      audio.play().catch(() => {});
     } else {
       audio.pause();
     }

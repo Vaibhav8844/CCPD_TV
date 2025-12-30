@@ -5,11 +5,11 @@ import { useDashboard } from "../../context/DashboardContext";
 
 const MUSIC_OPTIONS = [
   { id: "none", name: "None", url: "" },
-  { id: "calm-piano", name: "Calm Piano", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
-  { id: "ambient", name: "Ambient Atmosphere", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" },
-  { id: "soft-jazz", name: "Soft Jazz", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" },
-  { id: "classical", name: "Classical", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3" },
-  { id: "lofi", name: "Lo-Fi Beats", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3" },
+  { id: "calm-piano", name: "Professional Piano", url: "https://www.bensound.com/bensound-music/bensound-slowmotion.mp3" },
+  { id: "ambient", name: "Corporate Ambient", url: "https://www.bensound.com/bensound-music/bensound-perception.mp3" },
+  { id: "soft-jazz", name: "Office Jazz", url: "https://www.bensound.com/bensound-music/bensound-jazzyfrenchy.mp3" },
+  { id: "classical", name: "Classical Elegance", url: "https://www.bensound.com/bensound-music/bensound-pianomoment.mp3" },
+  { id: "lofi", name: "Focus & Productivity", url: "https://www.bensound.com/bensound-music/bensound-actionable.mp3" },
   { id: "custom", name: "Upload Custom Audio", url: "" }
 ];
 
@@ -63,9 +63,16 @@ export default function BackgroundMusic() {
     input.click();
   };
 
+  const [saving, setSaving] = useState(false);
+
   const saveMusic = async () => {
     const selectedOption = MUSIC_OPTIONS.find(m => m.id === selectedMusic);
     
+    if (enabled && selectedMusic === "custom" && !customAudioUrl) {
+      alert("⚠️ Please upload a custom audio file first");
+      return;
+    }
+
     let musicUrl = "";
     if (selectedMusic === "custom" && customAudioUrl) {
       musicUrl = customAudioUrl;
@@ -73,89 +80,93 @@ export default function BackgroundMusic() {
       musicUrl = selectedOption.url;
     }
 
-    await api.post(`${BACKEND_URL}/update-widget`, {
-      widget: "backgroundMusic",
-      data: {
-        enabled: enabled && selectedMusic !== "none",
-        musicId: selectedMusic,
-        musicUrl,
-        volume: volume / 100
-      }
-    });
-
-    alert("Background music settings saved!");
+    setSaving(true);
+    try {
+      await api.post(`${BACKEND_URL}/update-widget`, {
+        widget: "backgroundMusic",
+        data: {
+          enabled: enabled && selectedMusic !== "none",
+          musicId: selectedMusic,
+          musicUrl,
+          volume: volume / 100
+        }
+      });
+      alert(`✓ Background music settings saved!\nStatus: ${enabled ? "Enabled" : "Disabled"}`);
+    } catch (error) {
+      alert("❌ Failed to save music settings. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <div className="editor background-music-editor">
-      <h4>Background Music</h4>
+    <div className="widget-container">
+      <div className="widget-header">
+        <h4>Background Music</h4>
+      </div>
 
-      <label style={{ display: "flex", alignItems: "center", marginBottom: "15px" }}>
-        <input
-          type="checkbox"
-          checked={enabled}
-          onChange={(e) => setEnabled(e.target.checked)}
-          style={{ marginRight: "8px" }}
-        />
-        <strong>Enable Background Music</strong>
-      </label>
-
-      {enabled && (
-        <>
-          <div style={{ marginBottom: "15px" }}>
-            <label style={{ display: "block", marginBottom: "5px", fontWeight: "500" }}>
-              Select Music:
-            </label>
-            <select
-              value={selectedMusic}
-              onChange={(e) => setSelectedMusic(e.target.value)}
-              style={{ 
-                width: "100%", 
-                padding: "8px", 
-                borderRadius: "4px",
-                border: "1px solid #ccc"
-              }}
-            >
-              {MUSIC_OPTIONS.map(option => (
-                <option key={option.id} value={option.id}>
-                  {option.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {selectedMusic === "custom" && (
-            <div style={{ marginBottom: "15px" }}>
-              <button onClick={pickAudio} disabled={uploading}>
-                {uploading ? "Uploading..." : "📁 Choose Audio File"}
-              </button>
-              {customFilename && (
-                <p style={{ margin: "8px 0", fontSize: "14px", color: "#666" }}>
-                  Selected: {customFilename}
-                </p>
-              )}
-            </div>
-          )}
-
-          <div style={{ marginBottom: "15px" }}>
-            <label style={{ display: "block", marginBottom: "5px", fontWeight: "500" }}>
-              Volume: {volume}%
-            </label>
+      <div className="widget-body">
+        <div className="input-group">
+          <label className="checkbox-label" style={{ fontWeight: "600" }}>
             <input
-              type="range"
-              min="0"
-              max="100"
-              value={volume}
-              onChange={(e) => setVolume(Number(e.target.value))}
-              style={{ width: "100%" }}
+              type="checkbox"
+              checked={enabled}
+              onChange={(e) => setEnabled(e.target.checked)}
             />
-          </div>
-        </>
-      )}
+            Enable Background Music
+          </label>
+        </div>
 
-      <button onClick={saveMusic} style={{ width: "100%" }}>
-        Save Music Settings
-      </button>
+        {enabled && (
+          <>
+            <div className="input-group">
+              <label className="form-label">Select Music:</label>
+              <select
+                className="widget-select"
+                value={selectedMusic}
+                onChange={(e) => setSelectedMusic(e.target.value)}
+              >
+                {MUSIC_OPTIONS.map(option => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedMusic === "custom" && (
+              <div className="input-group">
+                <button className="secondary-btn" onClick={pickAudio} disabled={uploading}>
+                  {uploading ? "⏳ Uploading..." : "📁 Choose Audio File"}
+                </button>
+                {customFilename && (
+                  <p className="success-text">
+                    ✓ Selected: {customFilename}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="input-group">
+              <label className="form-label">Volume: {volume}%</label>
+              <input
+                className="widget-range"
+                type="range"
+                min="0"
+                max="100"
+                value={volume}
+                onChange={(e) => setVolume(Number(e.target.value))}
+              />
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="widget-footer">
+        <button className="widget-btn" onClick={saveMusic} disabled={uploading || saving}>
+          {saving ? "⏳ Saving..." : "💾 Save Music Settings"}
+        </button>
+      </div>
     </div>
   );
 }

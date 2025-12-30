@@ -14,7 +14,7 @@ export function DashboardProvider({ children }) {
         const res = await api.get(`${BACKEND_URL}/dashboard-state`);
         setDashboard(res.data);
       } catch (err) {
-        console.error("Failed to fetch dashboard state", err);
+        // Silent fail - user will see login screen
       } finally {
         setLoading(false);
       }

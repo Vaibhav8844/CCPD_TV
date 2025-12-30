@@ -27,18 +27,24 @@ export default function App() {
   const [layout, setLayout] = useState([]);
   const [widgets, setWidgets] = useState({});
   const [header, setHeader] = useState({});
+  const [layoutTemplate, setLayoutTemplate] = useState(null);
+  const [widgetSlots, setWidgetSlots] = useState({});
 
   useEffect(() => {
     socket.on("INIT_STATE", (state) => {
     setLayout(state.layout || []);
     setWidgets(state.widgets || {});
     setHeader(state.header || {});
+    setLayoutTemplate(state.layoutTemplate || null);
+    setWidgetSlots(state.widgetSlots || {});
   });
 
     socket.on("DASHBOARD_UPDATE", (state) => {
       setLayout(state.layout || []);
       setWidgets(state.widgets || {});
       setHeader(state.header || {});
+      setLayoutTemplate(state.layoutTemplate || null);
+      setWidgetSlots(state.widgetSlots || {});
     });
 
     return () => {
@@ -63,8 +69,17 @@ export default function App() {
 
       <div className="tv-canvas">
         {layout.map((item) => {
-          const type = item.i.split("-")[0];
-          const Comp = WIDGETS[type];
+          let type, Comp;
+          
+          if (layoutTemplate === 'custom' || !layoutTemplate) {
+            // Custom layout or legacy: widget type is in the item id
+            type = item.i.split("-")[0];
+            Comp = WIDGETS[type];
+          } else {
+            // Template layout: widget type is in widgetSlots
+            type = widgetSlots[item.i];
+            Comp = type ? WIDGETS[type] : null;
+          }
 
           if (!Comp) return null;
 

@@ -59,22 +59,39 @@ export default function DrivesEditorModal({ onClose }) {
     const [dd, mm, yyyy] = str.split("-");
     return new Date(`${yyyy}-${mm}-${dd}`);
   };
+  const [saving, setSaving] = useState(false);
+
   const save = async () => {
+    if (drives.length === 0) {
+      if (!window.confirm("No drives added. Save empty list?")) {
+        return;
+      }
+    }
+
     const sortedDrives = [...drives].sort(
       (a, b) => parseDDMMYYYY(a.date) - parseDDMMYYYY(b.date)
     );
-    await api.post(`${BACKEND_URL}/update-widget`, {
-      widget: "drives",
-      data: drives,
-    });
-    setDashboard((prev) => ({
-      ...prev,
-      widgets: {
-        ...prev.widgets,
-        drives: sortedDrives,
-      },
-    }));
-    onClose();
+    
+    setSaving(true);
+    try {
+      await api.post(`${BACKEND_URL}/update-widget`, {
+        widget: "drives",
+        data: sortedDrives,
+      });
+      setDashboard((prev) => ({
+        ...prev,
+        widgets: {
+          ...prev.widgets,
+          drives: sortedDrives,
+        },
+      }));
+      alert(`✓ Placement drives saved successfully!\n${sortedDrives.length} drive(s) in the list`);
+      onClose();
+    } catch (error) {
+      alert("❌ Failed to save drives. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return createPortal(
@@ -144,8 +161,8 @@ export default function DrivesEditorModal({ onClose }) {
         </div>
 
         <div className="modal-footer">
-          <button className="save-btn" onClick={save}>
-            Save
+          <button className="save-btn" onClick={save} disabled={saving}>
+            {saving ? "⏳ Saving..." : "💾 Save Drives"}
           </button>
         </div>
       </div>

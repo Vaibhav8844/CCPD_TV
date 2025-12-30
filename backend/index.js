@@ -22,6 +22,8 @@ import pLimit from "p-limit";
 import dashboardState from "./dashboardState.js";
 import authRoutes from "./routes/auth.routes.js";
 import tvRoutes from "./routes/tv.routes.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
+import { saveDashboardState, loadDashboardState } from "./utils/saveDashboardState.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -35,8 +37,15 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Middleware to attach io to request object
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 app.use(authRoutes);
 app.use(tvRoutes);
+app.use(dashboardRoutes);
 
 // ---------- Startup tmp cleanup (recommended) ----------
 await fs.ensureDir("./tmp");
@@ -159,13 +168,7 @@ app.get("/dashboard-state",requireAuth,requireRole(["EDITOR", "VIEWER"]), (req, 
   res.json(dashboardState);
 });
 
-app.post("/update-layout",requireAuth,requireRole(["EDITOR"]), (req, res) => {
-  dashboardState.layout = req.body.layout;
-  io.emit("DASHBOARD_UPDATE", dashboardState);
-  res.send({ success: true });
-});
-
-app.post("/update-widget",requireAuth, (req, res) => {
+app.post("/update-widget",requireAuth, async (req, res) => {
   const { widget, data } = req.body;
 
   if (!dashboardState.widgets[widget]) {
@@ -173,12 +176,15 @@ app.post("/update-widget",requireAuth, (req, res) => {
   }
 
   dashboardState.widgets[widget] = data;
-  res.send({ success: true });
-});
-
-app.post("/clear-widgets",requireAuth,requireRole(["EDITOR"]), (req, res) => {
-  dashboardState.layout = [];
+  
+  // Notify connected clients
   io.emit("DASHBOARD_UPDATE", dashboardState);
+  
+  // Auto-save to Drive
+  saveDashboardState(dashboardState).catch(err => 
+    console.error("Auto-save failed:", err.message)
+  );
+  
   res.send({ success: true });
 });
 
@@ -247,6 +253,11 @@ app.post("/update-playlist",requireAuth,requireRole(["EDITOR"]), async (req, res
 
     dashboardState.widgets.mediaSlideshow = finalSlides;
     io.emit("DASHBOARD_UPDATE", dashboardState);
+
+    // Auto-save to Drive
+    saveDashboardState(dashboardState).catch(err => 
+      console.error("Auto-save failed:", err.message)
+    );
 
     res.send({ success: true, slides: finalSlides.length });
   } catch (err) {
@@ -366,47 +377,31 @@ app.post("/upload-file",requireAuth,requireRole(["EDITOR"]), upload.single("file
       const pdfName = path.basename(file.originalname, ext);
       const folder = `slides/${pdfName}`;
 
-      console.log(`Processing PDF: ${file.originalname}`);
-      console.log(`Target folder: ${folder}`);
-
       let urls = [];
 
       const info = await googleDrivePathInfo(folder);
 
       if (info.exists && info.type === "folder") {
-        console.log(`Folder ${folder} already exists, loading existing images...`);
         urls = await listGoogleDriveFolder(folder);
-        console.log(`Found ${urls.length} existing images`);
       } else {
-        console.log(`Uploading PDF to Google Drive...`);
         const pdfRemotePath = `pdfs/${file.originalname}`;
         const pdfUrl = await uploadToGoogleDrive(localPath, pdfRemotePath);
-        console.log(`PDF uploaded: ${pdfUrl}`);
 
-        console.log(`Converting PDF to images...`);
         const images = await pdfToImages(localPath, workDir);
-        console.log(`PDF converted to ${images.length} images`);
 
-        console.log(`Creating Google Drive folder: ${folder}`);
         const targetFolderId = await createGoogleDriveFolder(folder);
-        console.log(`Folder created/found with ID: ${targetFolderId}`);
-
-        console.log(`Starting parallel upload of ${images.length} images to Google Drive folder: ${folder}`);
 
         // Upload images in parallel with concurrency limit of 10
         const limit = pLimit(10);
         const uploadPromises = images.map((imagePath, i) =>
           limit(async () => {
             const fileName = `page_${i + 1}.png`;
-            console.log(`Uploading image ${i + 1}/${images.length}: ${fileName}`);
             const url = await uploadToGoogleDrive(imagePath, fileName, targetFolderId);
-            console.log(`✓ Uploaded ${i + 1}/${images.length}`);
             return url;
           })
         );
 
         urls = await Promise.all(uploadPromises);
-        console.log(`All ${images.length} images uploaded successfully`);
       }
 
       urls.forEach((url) => {
@@ -432,6 +427,15 @@ app.post("/upload-file",requireAuth,requireRole(["EDITOR"]), upload.single("file
     await fs.remove(workDir);
   }
 });
+
+// ---------- Load Dashboard State ----------
+(async () => {
+  const savedState = await loadDashboardState();
+  if (savedState) {
+    Object.assign(dashboardState, savedState);
+    console.log("✓ Dashboard state restored from backup");
+  }
+})();
 
 // ---------- Start Server ----------
 server.listen(PORT, "0.0.0.0", () => {

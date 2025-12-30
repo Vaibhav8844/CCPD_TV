@@ -23,7 +23,12 @@ export default function PdfSlideshow() {
 
   const uploadAndSave = async () => {
     if (!file) {
-      alert("Please select a PDF file");
+      alert("⚠️ Please select a PDF file first");
+      return;
+    }
+
+    if (interval < 1 || interval > 60) {
+      alert("⚠️ Slide duration must be between 1 and 60 seconds");
       return;
     }
 
@@ -49,37 +54,58 @@ export default function PdfSlideshow() {
         }
       });
 
-      alert("PDF slideshow sent to TV");
+      alert(`✓ PDF slideshow uploaded successfully!\n${images.length} slides • ${interval}s per slide`);
       setFile(null);
     } catch (err) {
-      console.error(err);
-      alert("Failed to upload PDF");
+      alert("❌ Failed to upload PDF. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="editor">
-      <h4>PDF Slideshow</h4>
+    <div className="widget-container">
+      <div className="widget-header">
+        <h4>PDF Slideshow</h4>
+      </div>
 
-      <input
-        type="file"
-        accept="application/pdf"
-        onChange={(e) => setFile(e.target.files[0])}
-      />
+      <div className="widget-body">
+        <div className="input-group">
+          <label className="form-label">Select PDF File:</label>
+          <input
+            className="widget-input"
+            type="file"
+            accept="application/pdf"
+            onChange={(e) => setFile(e.target.files[0])}
+            disabled={loading}
+          />
+          {file && (
+            <p className="success-text">
+              ✓ Selected: {file.name}
+            </p>
+          )}
+        </div>
 
-      <input
-        type="number"
-        min="1"
-        value={interval}
-        onChange={(e) => setIntervalTime(Number(e.target.value))}
-        placeholder="Seconds per slide"
-      />
+        <div className="input-group">
+          <label className="form-label">Seconds per slide (1-60):</label>
+          <input
+            className="widget-input"
+            type="number"
+            min="1"
+            max="60"
+            value={interval}
+            onChange={(e) => setIntervalTime(Number(e.target.value))}
+            placeholder="Duration"
+            disabled={loading}
+          />
+        </div>
+      </div>
 
-      <button onClick={uploadAndSave} disabled={loading}>
-        {loading ? "Uploading..." : "Upload & Save"}
-      </button>
+      <div className="widget-footer">
+        <button className="widget-btn" onClick={uploadAndSave} disabled={loading}>
+          {loading ? "⏳ Processing PDF..." : "📤 Upload & Display on TV"}
+        </button>
+      </div>
     </div>
   );
 }

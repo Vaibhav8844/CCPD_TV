@@ -69,6 +69,11 @@ export default function MediaPlaylistWidget() {
 
   /* PUSH PLAYLIST */
   const save = async () => {
+    if (items.length === 0) {
+      alert("⚠️ Please add at least one item to the playlist");
+      return;
+    }
+
     setLoading(true);
     setMsg("");
 
@@ -80,9 +85,11 @@ export default function MediaPlaylistWidget() {
           duration: i.duration,
         })),
       });
-      setMsg("Playlist pushed to TV");
-    } catch {
-      setMsg("Failed to push playlist");
+      setMsg(`✓ Playlist saved! ${items.length} item(s)`);
+      alert(`✓ Playlist pushed to TV successfully!\n${items.length} items in playlist`);
+    } catch (error) {
+      setMsg("❌ Failed to push playlist");
+      alert("❌ Failed to push playlist. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -92,15 +99,36 @@ export default function MediaPlaylistWidget() {
     <div className="editor-box">
       <h4>Media Playlist</h4>
 
-      <div className="editor-actions">
-        <button onClick={pickImage}>➕ Add Image</button>
+      {items.length > 0 && (
+        <p style={{ fontSize: "0.8rem", color: "#94a3b8", margin: "5px 0" }}>
+          {items.length} item(s) in playlist
+        </p>
+      )}
 
-        <button onClick={() => setOpen(true)} disabled={items.length === 0}>
+      <div className="editor-actions" style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
+        <button onClick={pickImage} disabled={loading} style={{ flex: 1 }}>
+          {loading ? "⏳" : "➕"} Add
+        </button>
+
+        <button onClick={() => setOpen(true)} disabled={items.length === 0 || loading} style={{ flex: 1 }}>
           ✏️ Edit
         </button>
 
-        <button onClick={save}>Save Playlist</button>
+        <button onClick={save} disabled={loading} style={{ flex: 1 }}>
+          {loading ? "⏳ Saving..." : "💾 Save"}
+        </button>
       </div>
+
+      {msg && (
+        <p style={{ 
+          fontSize: "0.75rem", 
+          color: msg.includes("✓") ? "#22c55e" : "#ef4444",
+          margin: "8px 0 0 0",
+          textAlign: "center"
+        }}>
+          {msg}
+        </p>
+      )}
 
       {open && (
         <PlaylistEditorModal

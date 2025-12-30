@@ -6,24 +6,69 @@ export default function Spotlight() {
   const [company, setCompany] = useState("");
   const [role, setRole] = useState("");
   const [ctc, setCtc] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const save = async () => {
-    await api.post(`${BACKEND_URL}/update-widget`, {
-      widget: "spotlight",
-      data: { company, role, ctc }
-    });
-    alert("Spotlight updated");
+    if (!company.trim()) {
+      alert("⚠️ Company name is required");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await api.post(`${BACKEND_URL}/update-widget`, {
+        widget: "spotlight",
+        data: { company, role, ctc }
+      });
+      alert(`✓ Spotlight updated for ${company}!`);
+    } catch (error) {
+      alert("Failed to update spotlight. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div>
-      <h4>Company Spotlight</h4>
+    <div className="widget-container">
+      <div className="widget-header">
+        <h4>Company Spotlight</h4>
+      </div>
 
-      <input placeholder="Company" onChange={(e) => setCompany(e.target.value)} />
-      <input placeholder="Role" onChange={(e) => setRole(e.target.value)} />
-      <input placeholder="CTC" onChange={(e) => setCtc(e.target.value)} />
+      <div className="widget-body">
+        <div className="input-group">
+          <input 
+            className="widget-input"
+            placeholder="Company Name *" 
+            value={company}
+            onChange={(e) => setCompany(e.target.value)} 
+            disabled={loading}
+          />
+        </div>
+        <div className="input-group">
+          <input 
+            className="widget-input"
+            placeholder="Role (e.g., Software Engineer)" 
+            value={role}
+            onChange={(e) => setRole(e.target.value)} 
+            disabled={loading}
+          />
+        </div>
+        <div className="input-group">
+          <input 
+            className="widget-input"
+            placeholder="CTC (e.g., 12 LPA)" 
+            value={ctc}
+            onChange={(e) => setCtc(e.target.value)} 
+            disabled={loading}
+          />
+        </div>
+      </div>
 
-      <button onClick={save}>Save</button>
+      <div className="widget-footer">
+        <button className="widget-btn" onClick={save} disabled={loading}>
+          {loading ? "⏳ Saving..." : "💾 Save Spotlight"}
+        </button>
+      </div>
     </div>
   );
 }

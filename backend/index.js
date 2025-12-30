@@ -200,8 +200,8 @@ app.post("/update-widget",requireAuth, async (req, res) => {
 
   dashboardState.widgets[widget] = data;
   
-  // Notify connected clients
-  io.emit("DASHBOARD_UPDATE", dashboardState);
+  // Notify connected clients with only widgets data (don't send layout info)
+  io.emit("WIDGET_UPDATE", { widgets: dashboardState.widgets });
   
   // Auto-save to Drive
   saveDashboardState(dashboardState).catch(err => 
@@ -275,7 +275,7 @@ app.post("/update-playlist",requireAuth,requireRole(["EDITOR"]), async (req, res
     }
 
     dashboardState.widgets.mediaSlideshow = finalSlides;
-    io.emit("DASHBOARD_UPDATE", dashboardState);
+    io.emit("WIDGET_UPDATE", { widgets: dashboardState.widgets });
 
     // Auto-save to Drive
     saveDashboardState(dashboardState).catch(err => 

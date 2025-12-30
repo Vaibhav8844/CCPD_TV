@@ -47,9 +47,15 @@ export default function App() {
       setWidgetSlots(state.widgetSlots || {});
     });
 
+    socket.on("WIDGET_UPDATE", (data) => {
+      // Only update widgets, preserve layout
+      setWidgets(data.widgets || {});
+    });
+
     return () => {
     socket.off("INIT_STATE");
     socket.off("DASHBOARD_UPDATE");
+    socket.off("WIDGET_UPDATE");
   };
   }, []);
 

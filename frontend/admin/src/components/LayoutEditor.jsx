@@ -122,25 +122,32 @@ function LayoutEditor({initialState}) {
   }, [layoutTemplate]);
 
   useEffect(() => {
-    const handleUpdate = (state) => {
+    // Handle layout updates (from /update-layout endpoint)
+    const handleDashboardUpdate = (state) => {
       if (state && typeof state === 'object') {
-        // Update layout info if present (could be empty array)
-        if ('layout' in state) {
-          setLayout(state.layout || []);
+        if (state.layout) {
+          setLayout(state.layout);
         }
-        if ('layoutTemplate' in state) {
+        if (state.layoutTemplate) {
           setLayoutTemplate(state.layoutTemplate);
-        }
-        if ('widgetSlots' in state) {
           setWidgetSlots(state.widgetSlots || {});
         }
       }
     };
 
-    socket.on("DASHBOARD_UPDATE", handleUpdate);
+    // Handle widget-only updates (from /update-widget endpoint)
+    // Widget updates don't affect layout, so we ignore them here
+    const handleWidgetUpdate = (data) => {
+      // Widgets are updated but layout state is preserved
+      console.log("Widget updated, layout preserved");
+    };
+
+    socket.on("DASHBOARD_UPDATE", handleDashboardUpdate);
+    socket.on("WIDGET_UPDATE", handleWidgetUpdate);
 
     return () => {
-      socket.off("DASHBOARD_UPDATE", handleUpdate);
+      socket.off("DASHBOARD_UPDATE", handleDashboardUpdate);
+      socket.off("WIDGET_UPDATE", handleWidgetUpdate);
     };
   }, []);
 

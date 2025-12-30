@@ -24,6 +24,7 @@ import authRoutes from "./routes/auth.routes.js";
 import tvRoutes from "./routes/tv.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import { saveDashboardState, loadDashboardState } from "./utils/saveDashboardState.js";
+import { initializeUsers } from "./users/users.service.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -428,8 +429,12 @@ app.post("/upload-file",requireAuth,requireRole(["EDITOR"]), upload.single("file
   }
 });
 
-// ---------- Load Dashboard State ----------
+// ---------- Load Dashboard State and Users ----------
 (async () => {
+  // Load users first
+  await initializeUsers();
+  
+  // Then load dashboard state
   const savedState = await loadDashboardState();
   if (savedState) {
     Object.assign(dashboardState, savedState);
